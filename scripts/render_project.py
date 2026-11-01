@@ -33,6 +33,8 @@ def has_audio(video: str | Path) -> bool:
 
 
 def enabled_clips(project: dict[str, Any]) -> list[dict[str, Any]]:
+    from edit_versions import require_approved
+    require_approved(project)
     out = []
     for clip in project.get("clips", []):
         if not isinstance(clip, dict) or clip.get("enabled", True) is False:
@@ -69,6 +71,10 @@ def build_command(project: dict[str, Any], video: str | Path, output: str | Path
     if not ffmpeg:
         raise RuntimeError("未找到 ffmpeg")
     clips = enabled_clips(project)
+    if project.get('edit_version'):
+        sources = {str(Path(c.get('source_video') or project.get('source_video') or '').resolve()) for c in clips}
+        if sources != {str(Path(video).resolve())}:
+            raise ValueError('审核版本的原片与 --video 不匹配；多源项目请用跨集渲染器')
     audio = has_audio(video)
     filter_text = build_filter(clips, audio)
     cmd = [ffmpeg, "-hide_banner", "-y", "-i", str(video), "-filter_complex_script", "FILTER_FILE", "-map", "[outv]"]
@@ -121,3 +127,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

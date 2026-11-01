@@ -9,7 +9,8 @@ import argparse, json, re, sys
 from pathlib import Path
 from typing import Any
 
-VERSION="4.1.0"
+VERSION="4.2.0"
+from continuity_review import normalize, review, review_errors, approved_candidates, valid_range
 def read_json(p):
     with open(p,encoding="utf-8") as f:return json.load(f)
 def write_json(p,obj):
@@ -34,10 +35,11 @@ def candidates(dossier,multimodal,observations,max_gap=4.0):
     normalized=[]
     for i,s in enumerate(shots):
         start=s.get("start_sec");end=s.get("end_sec")
-        if not isinstance(start,(int,float)) or not isinstance(end,(int,float)) or start<0 or end<=start:
+        if not valid_range(s):
             raise ValueError(f"镜头观察 {i} 时间范围无效")
         normalized.append({**s,"shot_id":s.get("shot_id") or f"SHOT_{i+1:04d}","start_sec":float(start),"end_sec":float(end)})
     normalized.sort(key=lambda x:(x["start_sec"],x["end_sec"]))
+    if len({s["shot_id"] for s in normalized}) != len(normalized):raise ValueError("shot_id 重复")
     events={e.get("event_id"):e for e in dossier.get("events",[])}
     evidence={e.get("evidence_id"):e for e in dossier.get("evidence",[])}
     cuts=collect_cues(multimodal)
@@ -92,8 +94,8 @@ def candidates(dossier,multimodal,observations,max_gap=4.0):
     for item in out:
         item["nearby_shot_cut_times"]=[t for t in cuts if item["start_sec"]-0.5<=t<=item["end_sec"]+0.5]
         item["limitations"]=["镜头相邻不证明正反打","人物 ID/视线/动作阶段必须来自已审核观察","需回看连续原片确认轴线、视线、动作起止与反应对象"]
-    return {"version":VERSION,"episode_id":dossier.get("episode",{}).get("episode_id"),"candidate_count":len(out),"candidates":out,
-            "source_observation_count":len(normalized),"all_candidates_unreviewed":True}
+    return normalize({"version":VERSION,"episode_id":dossier.get("episode",{}).get("episode_id"),"candidate_count":len(out),"candidates":out,
+            "source_observation_count":len(normalized),"shots":normalized,"all_candidates_unreviewed":True})
 def qc(payload):
     issues=[]
     seen=set()
@@ -101,20 +103,26 @@ def qc(payload):
         cid=c.get("candidate_id")
         if cid in seen:issues.append({"severity":"ERROR","code":"DUPLICATE_CANDIDATE_ID","candidate_id":cid})
         seen.add(cid)
-        if c.get("review_status")!="UNREVIEWED":issues.append({"severity":"WARN","code":"CANDIDATE_PREMATURELY_REVIEWED","candidate_id":cid})
+        for code in review_errors(payload,c):issues.append({"severity":"ERROR","code":code,"candidate_id":cid})
+        if c.get("review_status")!="PASS":issues.append({"severity":"WARN","code":"CANDIDATE_NOT_APPROVED","candidate_id":cid})
         if not c.get("shot_ids") or len(c["shot_ids"])<2:issues.append({"severity":"ERROR","code":"INSUFFICIENT_SHOTS","candidate_id":cid})
         if c.get("candidate_type")=="REACTION_SHOT" and not c.get("character_ids"):issues.append({"severity":"WARN","code":"REACTION_WITHOUT_CHARACTER","candidate_id":cid})
         if not c.get("evidence_ids") and not c.get("event_ids"):issues.append({"severity":"WARN","code":"NO_EVENT_OR_EVIDENCE_LINK","candidate_id":cid})
-    return {"candidate_count":len(payload.get("candidates",[])),"issues":issues,"release_ready":not any(x["severity"]=="ERROR" for x in issues)}
+    return {"candidate_count":len(payload.get("candidates",[])),"issues":issues,"release_ready":bool(payload.get("candidates")) and len(approved_candidates(payload))==len(payload.get("candidates",[])) and not any(x["severity"]=="ERROR" for x in issues)}
 def main():
     p=argparse.ArgumentParser(description="正反打、反应镜头、对话轮次和动作连续候选")
     sub=p.add_subparsers(dest="cmd",required=True)
     a=sub.add_parser("candidates");a.add_argument("dossier");a.add_argument("multimodal");a.add_argument("observations");a.add_argument("output");a.add_argument("--max-gap",type=float,default=4.0)
     b=sub.add_parser("qc");b.add_argument("candidates");b.add_argument("output")
+    m=sub.add_parser("migrate");m.add_argument("input");m.add_argument("output")
+    r=sub.add_parser("review");r.add_argument("input");r.add_argument("output");r.add_argument("--candidate-id",required=True);r.add_argument("--status",required=True,choices=["UNREVIEWED","PASS","INCORRECT","NEED_EVIDENCE","DISPUTED"]);r.add_argument("--reason",required=True);r.add_argument("--reviewer",required=True);r.add_argument("--continuous-source-checked",action="store_true")
     x=p.parse_args()
     try:
         if x.cmd=="candidates":result=candidates(read_json(x.dossier),read_json(x.multimodal),read_json(x.observations),x.max_gap)
-        else:result=qc(read_json(x.candidates))
+        elif x.cmd=="qc":result=qc(read_json(x.candidates))
+        elif x.cmd=="migrate":result=normalize(read_json(x.input))
+        else:result=review(read_json(x.input),x.candidate_id,x.status,x.reason,x.reviewer,x.continuous_source_checked)
         write_json(x.output,result);print(json.dumps({"output":x.output,"candidate_count":result.get("candidate_count"),"issues":len(result.get("issues",[]))},ensure_ascii=False))
     except Exception as e:print(f"错误: {e}",file=sys.stderr);raise SystemExit(2)
 if __name__=="__main__":main()
+

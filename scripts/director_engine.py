@@ -10,7 +10,8 @@ import argparse, json
 from pathlib import Path
 from typing import Any
 
-VERSION="4.0.0"
+VERSION="4.2.0"
+from continuity_review import approved_candidates
 ROLE_PROFILES={
     "setup":{"target_sec":4.5,"min_sec":2.5,"max_sec":8.0,"transition":"CUT","pace":"measured","reason":"给观众时间建立人物、地点或风险"},
     "inciting_incident":{"target_sec":3.5,"min_sec":2.0,"max_sec":6.0,"transition":"CUT","pace":"building","reason":"快速明确引发故事变化的事件"},
@@ -26,7 +27,7 @@ def read_json(p):
 def write_json(p,obj):
     p=Path(p);p.parent.mkdir(parents=True,exist_ok=True);t=p.with_suffix(p.suffix+".tmp")
     t.write_text(json.dumps(obj,ensure_ascii=False,indent=2)+"\n",encoding="utf-8");t.replace(p)
-def plan_director(project:dict[str,Any], observations:dict[str,Any]|None=None, profile="balanced"):
+def plan_director(project:dict[str,Any], observations:dict[str,Any]|None=None, profile="balanced", continuity=None):
     out=json.loads(json.dumps(project))
     obs=observations or {}
     by_clip={x.get("clip_id"):x for x in obs.get("clip_observations",[]) if x.get("clip_id")}
@@ -62,15 +63,66 @@ def plan_director(project:dict[str,Any], observations:dict[str,Any]|None=None, p
         })
     out["director_plan"]={"version":VERSION,"profile":profile,"suggestions":suggestions,"review_status":"UNREVIEWED",
                           "limitations":["不从像素自动推断微表情、情绪或动机","目标时长不是自动裁切指令","转场建议需人工检查时空连续性"]}
+    out["director_plan"]["shot_alternatives"] = shot_alternatives(project, continuity) if continuity else []
     out["director_engine_version"]=VERSION
     return out
+def shot_alternatives(project, continuity):
+    """Only within an existing event/episode/source window; no invented B-roll."""
+    if 'episodes' in continuity:
+        payloads = continuity['episodes']
+        if not isinstance(payloads, list) or any(not isinstance(p, dict) or not p.get('episode_id') for p in payloads):
+            raise ValueError('continuity.episodes 必须为带 episode_id 的审核结果数组')
+        ids = [p['episode_id'] for p in payloads]
+        if len(set(ids)) != len(ids):
+            raise ValueError('连续性 bundle 中 episode_id 重复')
+        return [a for payload in payloads for a in shot_alternatives(project, payload)]
+    if not continuity.get('episode_id'):
+        raise ValueError('连续性数据缺少 episode_id')
+    approved = approved_candidates(continuity)
+    shots = {s['shot_id']: s for s in continuity.get('shots', [])}
+    alternatives = []
+    for clip in project.get('clips', []):
+        if clip.get('enabled', True) is False or clip.get('episode_id') != continuity.get('episode_id'):
+            continue
+        events = set(clip.get('event_ids') or ([clip['event_id']] if clip.get('event_id') else []))
+        evidence = set(clip.get('evidence_ids') or [])
+        for c in approved:
+            if not set(c['event_ids']).issubset(events) or not set(c['evidence_ids']).issubset(evidence):
+                continue
+            if c['candidate_type'] not in {'REACTION_SHOT','SHOT_REVERSE_SHOT','ACTION_CONTINUITY','DIALOGUE_TURN'}:
+                continue
+            # Reaction replacement is limited to a reaction slot; other pairs stay intact.
+            if c['candidate_type'] == 'REACTION_SHOT':
+                if clip.get('narrative_role', clip.get('story_role')) != 'reaction':
+                    continue
+                selected = [shots[c['shot_ids'][-1]]]
+            else:
+                selected = [shots[i] for i in c['shot_ids']]
+            start, end = min(s['start_sec'] for s in selected), max(s['end_sec'] for s in selected)
+            if not clip.get('source_video') or start < clip['start_sec'] or end > clip['end_sec']:
+                continue
+            if start == clip['start_sec'] and end == clip['end_sec']:
+                continue
+            alternatives.append({'alternative_id': f"{clip['clip_id']}:{c['candidate_id']}",
+                'clip_id': clip['clip_id'], 'episode_id': clip['episode_id'],
+                'candidate_id': c['candidate_id'], 'candidate_type': c['candidate_type'],
+                'source_shot_ids': c['shot_ids'], 'selected_shot_ids': [s['shot_id'] for s in selected],
+                'start_sec': start, 'end_sec': end, 'source_video': clip['source_video'],
+                'event_ids': c['event_ids'], 'evidence_ids': c['evidence_ids'],
+                'reason': c['reason'], 'resolved_risk_flags': c.get('risk_flags', []),
+                'risk_flags': ['EDIT_SELECTION_REQUIRES_REVIEW', 'CHECK_DIALOGUE_AND_CONTEXT'],
+                'continuity_review': c['review_history'][-1], 'review_status': 'UNREVIEWED'})
+    return alternatives
+
 def main():
     p=argparse.ArgumentParser(description="生成可解释的导演节奏与镜头编排建议")
     p.add_argument("project");p.add_argument("output");p.add_argument("--observations");p.add_argument("--profile",choices=["fast","balanced","slow"],default="balanced")
+    p.add_argument("--continuity",help="已审核的 shot-continuity JSON")
     a=p.parse_args()
     try:
-        out=plan_director(read_json(a.project),read_json(a.observations) if a.observations else None,a.profile)
+        out=plan_director(read_json(a.project),read_json(a.observations) if a.observations else None,a.profile,read_json(a.continuity) if a.continuity else None)
         write_json(a.output,out)
         print(json.dumps({"output":a.output,"clips":len(out.get("director_plan",{}).get("suggestions",[])),"status":"UNREVIEWED"},ensure_ascii=False))
     except Exception as e:raise SystemExit(f"导演编排失败: {e}")
 if __name__=="__main__":main()
+

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>剪辑版本比较</title><style>
+:root{color-scheme:dark}body{font:15px/1.6 system-ui;background:#111721;color:#edf2f8;max-width:1200px;margin:auto;padding:24px}button,input{font:inherit;margin:8px;padding:8px}table{width:100%;border-collapse:collapse}td,th{padding:10px;border:1px solid #394353;text-align:left}pre{white-space:pre-wrap}label{display:inline-block}
+</style><h1>剪辑版本比较与选择</h1>
+<p>载入 A/B 项目，比较片段增删、顺序、时间和素材来源。导出选择文件后使用 merge 命令创建新版本，再审核并渲染。</p>
+<label>A 版本 <input id="a" type="file" accept=".json"></label><label>B 版本 <input id="b" type="file" accept=".json"></label>
+<p id="summary"></p><div id="table"></div><pre id="order"></pre><button id="export" disabled>导出合并选择 JSON</button><pre>python scripts/edit_versions.py merge a.json b.json merged.json --selection version-selection.json</pre>
+<script>
+'use strict';
+const state={},$=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+for(const key of ['a','b'])$(key).onchange=async e=>{try{const p=JSON.parse(await e.target.files[0].text());if(!p.edit_version?.version_id||!Array.isArray(p.clips)||new Set(p.clips.map(c=>c.clip_id)).size!==p.clips.length)throw Error('请载入具有唯一片段 ID 的版本项目');state[key]=p;render()}catch(err){alert(err.message)}};
+function render(){if(!state.a||!state.b)return;const a=new Map(state.a.clips.map(c=>[c.clip_id,c])),b=new Map(state.b.clips.map(c=>[c.clip_id,c])),ids=[...new Set([...a.keys(),...b.keys()])];
+const duration=p=>p.clips.filter(c=>c.enabled!==false).reduce((t,c)=>t+c.end_sec-c.start_sec,0);
+$('summary').textContent=`A ${duration(state.a).toFixed(2)} 秒 → B ${duration(state.b).toFixed(2)} 秒；新选择需要重新审核`;
+const fields=['source_video','episode_id','start_sec','end_sec','enabled','narrative_role','event_id','event_ids','evidence_ids','shot_ids'];
+$('table').innerHTML='<table><thead><tr><th>片段</th><th>变化（A → B）</th><th>使用 B</th></tr></thead><tbody>'+ids.map(id=>{const x=a.get(id),y=b.get(id);const delta=!x?'新增':!y?'移除':fields.filter(k=>JSON.stringify(x[k])!==JSON.stringify(y[k])).map(k=>`${k}: ${JSON.stringify(x[k])} → ${JSON.stringify(y[k])}`).join('\n')||'无变化';return `<tr><td>${esc(id)}</td><td><pre>${esc(delta)}</pre></td><td><input type="checkbox" data-id="${esc(id)}" ${!x||!y?'disabled':''}></td></tr>`}).join('')+'</tbody></table>';
+$('order').textContent='A 顺序：'+[...a.keys()].join(' → ')+'\nB 顺序：'+[...b.keys()].join(' → ');
+$('export').disabled=ids.some(id=>!a.has(id)||!b.has(id));
+if($('export').disabled)$('summary').textContent+='；片段集合不同，请先人工核对增删，当前仅支持相同片段集合的选择合并。';}
+$('export').onclick=()=>{const selection={a_version_id:state.a.edit_version.version_id,b_version_id:state.b.edit_version.version_id,choose_b_clip_ids:[...document.querySelectorAll('[data-id]:checked')].map(x=>x.dataset.id)};const url=URL.createObjectURL(new Blob([JSON.stringify(selection,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='version-selection.json';a.click();URL.revokeObjectURL(url)};
+</script></html>

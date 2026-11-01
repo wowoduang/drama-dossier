@@ -13,6 +13,8 @@ def load_project(path):
     return d
 
 def active_clips(project):
+    from edit_versions import require_approved
+    require_approved(project)
     out=[]
     for cl in project.get('clips',[]):
         if cl.get('enabled',True) is False:continue
@@ -90,3 +92,4 @@ def main():
         print(f'跨集成片渲染完成: {out}')
     except Exception as e:raise SystemExit(f'渲染失败: {e}')
 if __name__=='__main__':main()
+

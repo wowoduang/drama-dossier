@@ -1,5 +1,17 @@
 # Changelog
 
+## v4.2.0
+
+- 完整连续性审核契约：追加审核者、理由、时间、前后状态和关联内容快照；兼容旧历史但禁止无审计 PASS 自动进入导演编排。
+- 导演引擎读取审核通过的正反打、反应、对话及动作连续候选，严格限制同集事件/证据和既有素材窗口，保留来源与风险。
+- 新增 A/B、增删/顺序/时间差异、版本比较页面和逐 clip 选择合并，所有新版本待审且输出不覆盖。
+- 新增带项目指纹的反馈返工、未解决问题阻塞、版本审计批准和两个渲染器的过期/未审拦截。
+- 新增渲染复核编排、成片时间轴/关键帧、黑场/静音问题回溯；语义重复、字幕与突兀切换保留人工审核边界。
+- 新增浏览器审核导出与 Python 消费的契约测试，以及真实版本渲染、关键帧与检测回溯测试。
+- 新增可复现完整 ZIP 构建及回归/语法/归档检查脚本。
+- 验证：基线 104 项、新版 128 项测试全部通过（含真实 FFmpeg）；Python 与 10 处 Web JavaScript 语法检查通过，完整 ZIP 校验通过。
+
+
 ## 3.8.0
 
 - 新增 `series_search.py`：强制指定截止集数的剧透安全检索，按分集本地记录构建检索文档，避免全剧合并身份/后期别名倒灌到早期观看视角。
@@ -88,3 +100,4 @@
 - Added continuity QC for missing event/evidence links and unreviewed candidate states.
 - All candidates remain UNREVIEWED; no face recognition or unsupported identity inference.
 - 104 regression tests pass.
+

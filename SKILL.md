@@ -3,7 +3,7 @@ name: drama-dossier
 description: "Evidence-first film and TV story understanding plus explainable multimodal highlight editing with spoiler-safe as-of retrieval, cross-episode visibility controls, and duplicate-clip review. Use when ChatGPT must analyze episode videos, subtitles, transcripts, keyframes, or drama dossiers; understand characters, scenes, events, motives, relationships, causal chains, storylines, foreshadowing and full-series continuity; batch-scan seasons locally; build a resumable SQLite series memory; review cross-episode identity/storyline/foreshadowing candidates; generate setup/peak/reaction/payoff arcs; create 30s/60s/3m/5m story cuts; or operate local evidence-review and editing workbenches."
 ---
 
-# 剧情理解与多模态精彩剪辑 v4.1
+# 剧情理解与多模态精彩剪辑 v4.2
 
 将任务分成**剧情事实层**与**剪辑选择层**。剧情事实层回答发生了什么、谁做了什么、证据是什么；剪辑层回答哪些片段值得组合。不得让剪辑偏好反向修改事实。
 
@@ -406,3 +406,17 @@ python scripts/shot_continuity.py qc work/shot-continuity.json work/shot-continu
 ```
 
 打开 `web/shot-continuity-review.html` 导入候选 JSON，逐条审核并导出审核版。候选类型包括 `SHOT_REVERSE_SHOT / REACTION_SHOT / ACTION_CONTINUITY / DIALOGUE_TURN`，默认 `UNREVIEWED`。相邻时间、同一地点或相似画面本身不能证明正反打、人物身份、视线匹配或动作连续。人工必须回看连续原片，检查轴线、视线、人物位置、动作起止、台词轮次和反应对象。
+
+
+
+## v4.2 审核驱动编排、版本与返工
+
+在进行镜头替换、A/B 版本、反馈返工或新版本渲染前，阅读 [edit-version-workflow.md](references/edit-version-workflow.md)。沿用 dossier/SQLite/edit-project 分层，不让剪辑选择改变剧情事实。
+
+- 使用连续性审核 UI 或 `shot_continuity.py review` 追加完整记录；PASS 必须包含审核者、理由、时间、内容快照及连续原片回看确认。旧版仅状态 PASS 必须补观察并重新审核。
+- 向 `director_engine.py --continuity` 传入审核结果。只让完整、未过期 PASS 且证据/事件归属匹配的候选进入替代方案；仍需审核新的剪辑选择。
+- 使用 `edit_versions.py ab/diff/merge/rework/approve` 创建不覆盖旧文件的新版本。明确 A/B 为确定性候选编排，无合格候选可保持相同内容。
+- 返工反馈必须包含当前项目 fingerprint、clip_id 和具体问题；缺少合格替代或人工解决说明时保留 unresolved_issues，不编造修复。
+- 新版本默认 UNREVIEWED。批准后发生内容变化必须重新审核；不因剪辑批准宣称剧情审查或成片审查通过。
+- 使用 `review_cut.py` 重新渲染、运行技术复核、提取关键帧并映射问题回源 clip。完整成片、字幕、突兀切换及剧情连续性仍需人工审片。
+- 发布前运行 `python scripts/build_release.py`；仅按真实测试结果报告数量和能力。
