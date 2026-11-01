@@ -1,0 +1,126 @@
+{
+  "schema_version": "3.5.0",
+  "episode": {
+    "episode_id": "EP001",
+    "title": "虚构示例：从等待到主动调查",
+    "source_version": "synthetic_example",
+    "duration_sec": 100
+  },
+  "evidence": [
+    {
+      "evidence_id": "V1",
+      "type": "SUB",
+      "start_sec": 10,
+      "end_sec": 12,
+      "raw": "我相信你",
+      "quality": "high",
+      "review_status": "UNREVIEWED"
+    },
+    {
+      "evidence_id": "V2",
+      "type": "SUB",
+      "start_sec": 30,
+      "end_sec": 32,
+      "raw": "我要亲自查清楚",
+      "quality": "high",
+      "review_status": "UNREVIEWED"
+    },
+    {
+      "evidence_id": "V3",
+      "type": "SUB",
+      "start_sec": 70,
+      "end_sec": 72,
+      "raw": "后期真实身份",
+      "quality": "high",
+      "review_status": "UNREVIEWED"
+    }
+  ],
+  "characters": [
+    {
+      "character_id": "A",
+      "canonical_name": "主角早期名字",
+      "aliases": [],
+      "identity_status": "confirmed",
+      "evidence_ids": [
+        "V1"
+      ],
+      "review_status": "UNREVIEWED"
+    },
+    {
+      "character_id": "B",
+      "canonical_name": "同伴",
+      "aliases": [],
+      "identity_status": "confirmed",
+      "evidence_ids": [
+        "V1"
+      ],
+      "review_status": "UNREVIEWED"
+    }
+  ],
+  "appearances": [],
+  "scenes": [],
+  "events": [
+    {
+      "event_id": "E1",
+      "scene_id": null,
+      "playback_time": 11,
+      "actor": "A",
+      "patient": "B",
+      "recipient": null,
+      "target": null,
+      "action": "事件1",
+      "modality": "actual",
+      "polarity": "positive",
+      "certainty": "F1_DIRECT",
+      "evidence_ids": [
+        "V1"
+      ],
+      "review_status": "UNREVIEWED"
+    },
+    {
+      "event_id": "E2",
+      "scene_id": null,
+      "playback_time": 31,
+      "actor": "A",
+      "patient": "B",
+      "recipient": null,
+      "target": null,
+      "action": "事件2",
+      "modality": "actual",
+      "polarity": "positive",
+      "certainty": "F1_DIRECT",
+      "evidence_ids": [
+        "V2"
+      ],
+      "review_status": "UNREVIEWED"
+    },
+    {
+      "event_id": "E3",
+      "scene_id": null,
+      "playback_time": 71,
+      "actor": "A",
+      "patient": "B",
+      "recipient": null,
+      "target": null,
+      "action": "事件3",
+      "modality": "actual",
+      "polarity": "positive",
+      "certainty": "F1_DIRECT",
+      "evidence_ids": [
+        "V3"
+      ],
+      "review_status": "UNREVIEWED"
+    }
+  ],
+  "relations": [],
+  "causal_edges": [],
+  "threads": [],
+  "storylines": [],
+  "highlights": [],
+  "media_cues": [],
+  "story_arcs": [],
+  "knowledge_states": [],
+  "character_states": [],
+  "character_state_changes": [],
+  "review_history": []
+}

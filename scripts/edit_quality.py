@@ -93,6 +93,10 @@ def continuity_qc(project:dict[str,Any], source_durations:dict[str,float]|None=N
             continue
         if source_durations and src in source_durations and end>source_durations[src]+0.05:
             issues.append({"severity":"ERROR","code":"SOURCE_DURATION_EXCEEDED","clip_id":c.get("clip_id"),"message":f"出点 {end:.3f}s 超过源视频时长 {source_durations[src]:.3f}s"})
+        for evidence_range in c.get("state_evidence_ranges", []):
+            ev_start, ev_end = evidence_range.get("start_sec"), evidence_range.get("end_sec")
+            if not all(type(x) in (int,float) and math.isfinite(x) for x in (ev_start,ev_end)) or ev_start<0 or ev_end<ev_start or start>ev_start or end<ev_end:
+                issues.append({"severity":"ERROR","code":"STATE_EVIDENCE_TRUNCATED","clip_id":c.get("clip_id"),"message":"剪辑窗口没有完整保留人物状态的引用证据"})
         if end-start<0.5:
             issues.append({"severity":"WARN","code":"VERY_SHORT_CLIP","clip_id":c.get("clip_id"),"message":"片段短于 0.5 秒，检查是否误切"})
         by_source.setdefault(src,[]).append((start,end,c))
@@ -122,3 +126,4 @@ def main():
     else: result=continuity_qc(read_json(x.project))
     write_json(x.output,result); print(json.dumps({"output":x.output,"issue_count":result.get("issue_count",len(result.get("boundary_suggestions",[]))),"release_ready":result.get("release_ready")},ensure_ascii=False))
 if __name__=="__main__": main()
+

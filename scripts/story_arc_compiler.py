@@ -410,7 +410,16 @@ def make_prompt(db_path,sid,selector_type,selector_id,goal,output,max_episode_nu
                     relation_context.append({'episode_id':row['episode_id'],'relation_id':row['relation_id'],'source_character_id':payload.get('source_character'),'target_character_id':payload.get('target_character'),'type':row['relation_type'],'status':row['status'],'review_status':row['review_status'],'evidence_ids':json.loads(row['evidence_ids_json'] or '[]'),'payload':payload})
                 else:
                     x=dict(row);x['evidence_ids']=json.loads(x.pop('evidence_ids_json'));x['payload']=payload;relation_context.append(x)
-        context={'series_id':sid,'goal':goal,'spoiler_guard':{'enabled':max_episode_number is not None,'max_episode_number':max_episode_number,'strict':True,'cross_episode_links_require_visibility_declaration':True},'selector':{'type':selector_type,'id':selector_id},'events':events,'storyline_context':storyline_context,'thread_context':thread_context,'episode_story_arcs':arc_context,'relation_context':relation_context,'local_causal_edges':local_causal,'cross_episode_causal_edges':causal,'knowledge_states':knowledge}
+        state_context = []
+        from character_state import trajectory
+        state_cutoff = max_episode_number if max_episode_number is not None else c.execute('SELECT MAX(episode_number) FROM episodes WHERE series_id=?', (sid,)).fetchone()[0]
+        if state_cutoff is not None:
+            for gid in sorted(set(target_gids)):
+                if _visible_by(c, sid, 'character', gid, state_cutoff):
+                    timeline, _ = trajectory(c, sid, gid, str(state_cutoff))
+                    if timeline['states']:
+                        state_context.append(timeline)
+        context={'series_id':sid,'goal':goal,'spoiler_guard':{'enabled':max_episode_number is not None,'max_episode_number':max_episode_number,'strict':True,'cross_episode_links_require_visibility_declaration':True},'selector':{'type':selector_type,'id':selector_id},'events':events,'storyline_context':storyline_context,'thread_context':thread_context,'episode_story_arcs':arc_context,'relation_context':relation_context,'character_state_context':state_context,'local_causal_edges':local_causal,'cross_episode_causal_edges':causal,'knowledge_states':knowledge}
     finally:c.close()
     out=Path(output);out.parent.mkdir(parents=True,exist_ok=True)
     prompt=('''# 跨集故事弧规划任务
@@ -419,7 +428,7 @@ def make_prompt(db_path,sid,selector_type,selector_id,goal,output,max_episode_nu
 
 目标：'''+goal+'''
 
-必须遵守：只引用存在的 episode_id/event_id；默认按原剧时间顺序；不得把计划、威胁、想象写成已执行事实；不得凭时间先后推断因果；每段说明选择理由；缺少 setup/peak/reaction/payoff/resolution 时写入 missing_roles，不得编造；人物认知必须按该时点 knowledge_states 判断，不得以后续信息倒灌；关键转折保留 evidence_refs。若 spoiler_guard.enabled=true，只能使用 max_episode_number 及以前的事件、分集本地别名、剧情线和认知资料；任何跨集人物身份、剧情线、伏笔或因果关联，只有存在 series_visibility 中 effective_episode_number 不晚于截止集数且 review_status=PASS 的声明才可使用；不得使用全剧合并身份推断截止集数之前尚未揭示的身份。只把已审核 PASS 的因果边写成已确认因果；相同剧情线、伏笔、共同人物仅能作为连续性依据，不自动证明因果。若缺乏可靠连接，明确写 risk_flags / missing_roles，不能用 episode 顺序补因果。对每个段落给出人物与观众认知差异。输出纯 JSON，不要 Markdown 围栏。
+必须遵守：只引用存在的 episode_id/event_id；默认按原剧时间顺序；不得把计划、威胁、想象写成已执行事实；不得凭时间先后推断因果；每段说明选择理由；缺少 setup/peak/reaction/payoff/resolution 时写入 missing_roles，不得编造；人物认知必须按该时点 knowledge_states 判断，不得以后续信息倒灌；关键转折保留 evidence_refs。若 spoiler_guard.enabled=true，只能使用 max_episode_number 及以前的事件、分集本地别名、剧情线和认知资料；任何跨集人物身份、剧情线、伏笔或因果关联，只有存在 series_visibility 中 effective_episode_number 不晚于截止集数且 review_status=PASS 的声明才可使用；不得使用全剧合并身份推断截止集数之前尚未揭示的身份。只把已审核 PASS 的因果边写成已确认因果；相同剧情线、伏笔、共同人物仅能作为连续性依据，不自动证明因果。若缺乏可靠连接，明确写 risk_flags / missing_roles，不能用 episode 顺序补因果。对每个段落给出人物与观众认知差异。character_state_context 仅提供已审核、可见时点受限的状态记录和显式状态变化；按 episode_id/playback_time/audience_available_sec 对齐，不把较晚状态倒灌到早期事件，不把 CONTEXT 事件关联写成因果，不补写缺失心理。输出纯 JSON，不要 Markdown 围栏。
 
 ```json
 '''+json.dumps(context,ensure_ascii=False,indent=2)+'''
@@ -453,3 +462,4 @@ def main():
             print(json.dumps(make_prompt(a.db,a.series_id,st,sid,a.goal,a.output,cutoff),ensure_ascii=False,indent=2))
     except Exception as exc: print(f'错误: {exc}',file=sys.stderr);raise SystemExit(2)
 if __name__=='__main__': main()
+

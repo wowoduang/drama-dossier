@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate the complete repository and create a deterministic skill.zip."""
 from pathlib import Path
+import json
 import py_compile
 import re
 import shutil
@@ -25,6 +26,9 @@ def validate():
     node = shutil.which('node')
     if not node: raise RuntimeError('需要 Node 检查 Web JavaScript')
     subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v'], cwd=ROOT, check=True)
+    for path in package_files():
+        if path.suffix == '.json':
+            json.loads(path.read_text(encoding='utf-8'))
     with tempfile.TemporaryDirectory() as td:
         tmp = Path(td)
         for i, path in enumerate(ROOT.rglob('*.py')):

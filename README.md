@@ -1,4 +1,4 @@
-# Drama Dossier v4.2.0
+# Drama Dossier v4.3.0
 
 证据驱动的影视剧情理解 + 多模态精彩片段发现 + 剪映式人工精修 Skill。
 v3.8 在 v3.7 跨集故事弧之上，增加截止集数强制的剧透安全检索、人工声明跨集事实可见时间、相似镜头候选检测和人工去重审核。单集 dossier schema 与 Series Memory Engine 继续沿用各自版本化数据结构。
@@ -397,3 +397,12 @@ python scripts/serve_review.py --port 8765
 新增 A/B 版本、差异报告、版本比较页面、逐片段合并、反馈定位返工，以及新版本批准和渲染门槛。`review_cut.py` 联动真实渲染、技术复核、成片关键帧和问题源 clip 映射。所有新剪辑选择默认待审，不覆盖旧项目。
 
 完整命令、旧版兼容方式和能力边界见 [edit-version-workflow.md](references/edit-version-workflow.md)。本版未增加自动视觉语义判断，字幕和突兀切换仍需人工审片；A/B 是候选辅助编排，不保证自动生成更精彩的成片。
+
+
+## v4.3.0 人物状态与主角成长素材
+
+新增带证据的 `character_states` / `character_state_changes`，记录目标、认知、处境、关系、外显反应和行动结果。审核页 `web/character-states.html` 支持回看原片、逐条审核和导出完整历史。解释性心理判断被保留，但不进入自动素材选择。
+
+`character_state.py timeline` 按截止集数和集内秒数提供主角轨迹；`compile` 按完整状态变化组提取素材，保留变化两端，生成需要人工批准的新版本。沿用现有 dossier、SQLite episode_payloads、导演、版本与渲染流程，无需重做数据库。
+
+用法、字段、示例和能力边界见 [character-state-workflow.md](references/character-state-workflow.md)。主角身份、状态转变和成片审美仍需人工核实；不宣称自动读心或自动理解完整成长线。

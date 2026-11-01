@@ -16,7 +16,7 @@ SCHEMA_VERSION = "3.5.0"
 COMPATIBLE_SCHEMA_VERSIONS = {"3.0.0", "3.1.0", "3.2.0", "3.3.0", "3.4.0", SCHEMA_VERSION}
 TOP_LEVEL = [
     "episode", "evidence", "characters", "appearances", "scenes", "events",
-    "relations", "causal_edges", "threads", "storylines", "highlights", "media_cues", "story_arcs", "knowledge_states", "review_history",
+    "relations", "causal_edges", "threads", "storylines", "highlights", "media_cues", "story_arcs", "knowledge_states", "character_states", "character_state_changes", "review_history",
 ]
 ID_FIELDS = {
     "evidence": "evidence_id",
@@ -32,6 +32,8 @@ ID_FIELDS = {
     "media_cues": "cue_id",
     "story_arcs": "arc_id",
     "knowledge_states": "knowledge_id",
+    "character_states": "state_id",
+    "character_state_changes": "change_id",
     "review_history": "review_id",
 }
 REVIEWABLE = tuple(k for k in ID_FIELDS if k not in {"review_history", "media_cues"})
@@ -87,6 +89,8 @@ def empty_dossier(episode_id: str = "E001", title: str = "", duration_sec: float
         "media_cues": [],
         "story_arcs": [],
         "knowledge_states": [],
+        "character_states": [],
+        "character_state_changes": [],
         "review_history": [],
     }
 
@@ -148,6 +152,8 @@ def validate(data: dict[str, Any]) -> list[str]:
     """Validate structure/references. This intentionally does not judge story truth."""
     errors: list[str] = []
     data.setdefault("knowledge_states", [])
+    data.setdefault("character_states", [])
+    data.setdefault("character_state_changes", [])
     if data.get("schema_version") not in COMPATIBLE_SCHEMA_VERSIONS:
         errors.append(f"不支持的 schema_version: {data.get('schema_version')!r}")
     for key in TOP_LEVEL:
@@ -413,6 +419,8 @@ def validate(data: dict[str, Any]) -> list[str]:
         if not isinstance(version, int) or version < 1:
             errors.append(f"review_history[{i}] version 无效")
 
+    from character_state_model import validation_errors
+    errors.extend(validation_errors(data))
     return errors
 
 
@@ -433,12 +441,17 @@ def add_review(
     evidence_ids: Iterable[str] | None = None,
     new_value: dict[str, Any] | None = None,
     reviewer: str = "",
+    source_checked: bool = False,
 ) -> dict[str, Any]:
     if status not in VALID_REVIEW - {"UNREVIEWED"}:
         raise ValueError(f"无效审核状态: {status}")
     if not reason.strip():
         raise ValueError("审核理由不能为空")
     collection, obj = _locate_object(data, object_id)
+    if collection in {"character_states", "character_state_changes"} and not reviewer.strip():
+        raise ValueError("人物状态审核必须填写审核者")
+    if collection in {"character_states", "character_state_changes"} and status == "PASS" and not source_checked:
+        raise ValueError("人物状态 PASS 必须确认已核对连续原片")
     id_field = ID_FIELDS[collection]
     old_value = copy.deepcopy(obj)
     if new_value is not None:
@@ -468,6 +481,10 @@ def add_review(
         "timestamp": now(),
         "version": len(previous) + 1,
     }
+    if collection in {"character_states", "character_state_changes"}:
+        from character_state_model import context_snapshot
+        record["context_snapshot"] = context_snapshot(data, obj, collection)
+        record["source_checked"] = bool(source_checked)
     data["review_history"].append(record)
     return record
 
@@ -665,7 +682,7 @@ def cmd_validate(a: argparse.Namespace) -> None:
 def cmd_review(a: argparse.Namespace) -> None:
     data = load(a.input)
     new_value = json.loads(a.new_value) if a.new_value else None
-    add_review(data, a.object_id, a.status, a.reason, a.evidence_id, new_value, a.reviewer)
+    add_review(data, a.object_id, a.status, a.reason, a.evidence_id, new_value, a.reviewer, a.source_checked)
     errors = validate(data)
     if errors:
         raise SystemExit("审核后档案校验失败:\n" + "\n".join(errors))
@@ -740,6 +757,7 @@ def build_parser() -> argparse.ArgumentParser:
     x.add_argument("--evidence-id", action="append", default=[])
     x.add_argument("--new-value", help="JSON 对象字符串")
     x.add_argument("--reviewer", default="")
+    x.add_argument("--source-checked", action="store_true", help="人物状态 PASS 必须确认已核对连续原片")
     x.add_argument("--output")
     x.set_defaults(func=cmd_review)
 
@@ -769,3 +787,4 @@ def build_parser() -> argparse.ArgumentParser:
 if __name__ == "__main__":
     args = build_parser().parse_args()
     args.func(args)
+

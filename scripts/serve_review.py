@@ -37,6 +37,7 @@ def main() -> None:
         print(f"故事弧审核: http://127.0.0.1:{args.port}/web/story-arc-workbench.html")
         print(f"重复素材审核: http://127.0.0.1:{args.port}/web/dedupe-review.html")
         print(f"镜头连续性: http://127.0.0.1:{args.port}/web/shot-continuity-review.html")
+        print(f"人物状态:   http://127.0.0.1:{args.port}/web/character-states.html")
         print(f"版本比较:   http://127.0.0.1:{args.port}/web/version-compare.html")
         print(f"剧透安全检索需另启 API: python scripts/series_search_server.py <db> --series-id <SERIES_ID> --port 8766")
         print("仅监听本机 127.0.0.1；Ctrl+C 停止。")

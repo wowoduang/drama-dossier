@@ -129,6 +129,13 @@ def import_dossier(db_path,series_id,dossier_path,replace=False):
         old_lines={r[0]:r[1] for r in c.execute("SELECT local_storyline_id,global_storyline_id FROM storyline_mentions WHERE series_id=? AND episode_id=?",(series_id,eid))}
         old_threads={r[0]:r[1] for r in c.execute("SELECT local_thread_id,global_thread_id FROM thread_mentions WHERE series_id=? AND episode_id=?",(series_id,eid))}
         if old:c.execute("DELETE FROM episodes WHERE series_id=? AND episode_id=?",(series_id,eid))
+        if old and c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='series_visibility'").fetchone():
+            for declaration in c.execute("SELECT * FROM series_visibility WHERE series_id=? AND review_status='PASS'", (series_id,)).fetchall():
+                refs = json.loads(declaration['evidence_refs_json'])
+                if declaration['effective_episode_id'] == eid or any(ref.split(':', 1)[0] == eid for ref in refs):
+                    c.execute("UPDATE series_visibility SET review_status='NEED_EVIDENCE' WHERE series_id=? AND entity_type=? AND entity_id=?", (series_id, declaration['entity_type'], declaration['entity_id']))
+                    c.execute("INSERT INTO audit_log VALUES(?,?,?,?,?,?,?,?,?)", (uid('AUD'), series_id, 'REOPEN_VISIBILITY_AFTER_EPISODE_REPLACE', declaration['entity_id'], '可见性证据分集已更新，需重新声明', '', _json(dict(declaration)), _json({'review_status':'NEED_EVIDENCE'}), now()))
+
         if old:
             stale=c.execute("SELECT edge_id FROM cross_episode_causal_edges WHERE series_id=? AND (from_episode_id=? OR to_episode_id=?) AND review_status='PASS'",(series_id,eid,eid)).fetchall()
             for edge_row in stale:
@@ -316,8 +323,14 @@ def build_memory(c,sid):
     for r in c.execute('SELECT * FROM cross_episode_causal_edges WHERE series_id=? ORDER BY created_at',(sid,)):
         x=dict(r); x['evidence_refs']=json.loads(x.pop('evidence_refs_json')); x['counter_evidence_refs']=json.loads(x.pop('counter_evidence_refs_json')); cross_edges.append(x)
     evidence_index=[]
+    character_states=[]
+    character_state_changes=[]
     for row in c.execute('SELECT episode_id,payload_json FROM episode_payloads WHERE series_id=? ORDER BY episode_id',(sid,)):
         episode_payload=json.loads(row['payload_json'])
+        for state in episode_payload.get('character_states',[]):
+            character_states.append({**state, 'episode_id':row['episode_id']})
+        for change in episode_payload.get('character_state_changes',[]):
+            character_state_changes.append({**change, 'episode_id':row['episode_id']})
         for ev in episode_payload.get('evidence',[]):
             evidence_index.append({'episode_id':row['episode_id'],'evidence_id':ev.get('evidence_id'),'type':ev.get('type'),'source':ev.get('source'),'start_sec':ev.get('start_sec'),'end_sec':ev.get('end_sec'),'raw':ev.get('raw'),'observation':ev.get('observation'),'locator':ev.get('locator'),'review_status':ev.get('review_status','UNREVIEWED')})
     ic=[dict(r) for r in c.execute("SELECT * FROM identity_candidates WHERE series_id=? AND status='NEEDS_REVIEW' ORDER BY match_key",(sid,))]
@@ -334,7 +347,7 @@ def build_memory(c,sid):
     if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='visibility_audit'").fetchone():
         for v in c.execute('SELECT * FROM visibility_audit WHERE series_id=? ORDER BY created_at',(sid,)):
             x=dict(v);x['before']=json.loads(x.pop('before_json'));x['after']=json.loads(x.pop('after_json'));visibility_audits.append(x)
-    return {'engine_version':ENGINE_VERSION,'series':{'series_id':s['series_id'],'title':s['title']},'episodes':eps,'characters':chars,'storylines':lines,'relation_history':rels,'threads':threads,'events':event_index,'causal_edges':causal_edges,'story_arcs':story_arcs,'knowledge_states':knowledge_states,'cross_episode_causal_edges':cross_edges,'series_visibility':visibility,'visibility_audit':visibility_audits,'evidence_index':evidence_index,'identity_candidates':ic,'storyline_candidates':sc,'thread_candidates':tc,'audit_log':audits,'generated_at':now()}
+    return {'engine_version':ENGINE_VERSION,'series':{'series_id':s['series_id'],'title':s['title']},'episodes':eps,'characters':chars,'storylines':lines,'relation_history':rels,'threads':threads,'events':event_index,'causal_edges':causal_edges,'story_arcs':story_arcs,'knowledge_states':knowledge_states,'character_states':character_states,'character_state_changes':character_state_changes,'cross_episode_causal_edges':cross_edges,'series_visibility':visibility,'visibility_audit':visibility_audits,'evidence_index':evidence_index,'identity_candidates':ic,'storyline_candidates':sc,'thread_candidates':tc,'audit_log':audits,'generated_at':now()}
 def export_memory(db_path,sid,output):
     c=connect(db_path)
     try:p=build_memory(c,sid)
@@ -469,3 +482,4 @@ def main():
             m=export_memory(a.db,a.series_id,a.output); print(f"已导出 {a.output}: {len(m['episodes'])} 集，{len(m['characters'])} 个全剧人物实体，{len(m['storylines'])} 条剧情线")
     except Exception as exc:print(f'错误: {exc}',file=sys.stderr); raise SystemExit(2)
 if __name__=='__main__':main()
+

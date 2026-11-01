@@ -3,7 +3,7 @@ name: drama-dossier
 description: "Evidence-first film and TV story understanding plus explainable multimodal highlight editing with spoiler-safe as-of retrieval, cross-episode visibility controls, and duplicate-clip review. Use when ChatGPT must analyze episode videos, subtitles, transcripts, keyframes, or drama dossiers; understand characters, scenes, events, motives, relationships, causal chains, storylines, foreshadowing and full-series continuity; batch-scan seasons locally; build a resumable SQLite series memory; review cross-episode identity/storyline/foreshadowing candidates; generate setup/peak/reaction/payoff arcs; create 30s/60s/3m/5m story cuts; or operate local evidence-review and editing workbenches."
 ---
 
-# 剧情理解与多模态精彩剪辑 v4.2
+# 剧情理解与多模态精彩剪辑 v4.3
 
 将任务分成**剧情事实层**与**剪辑选择层**。剧情事实层回答发生了什么、谁做了什么、证据是什么；剪辑层回答哪些片段值得组合。不得让剪辑偏好反向修改事实。
 
@@ -420,3 +420,15 @@ python scripts/shot_continuity.py qc work/shot-continuity.json work/shot-continu
 - 新版本默认 UNREVIEWED。批准后发生内容变化必须重新审核；不因剪辑批准宣称剧情审查或成片审查通过。
 - 使用 `review_cut.py` 重新渲染、运行技术复核、提取关键帧并映射问题回源 clip。完整成片、字幕、突兀切换及剧情连续性仍需人工审片。
 - 发布前运行 `python scripts/build_release.py`；仅按真实测试结果报告数量和能力。
+
+
+## v4.3 人物状态与主角向素材
+
+处理“主角状态”“主角成长”“从信任到怀疑”“目标改变”等任务时，先读 [character-state-workflow.md](references/character-state-workflow.md)。
+
+- 将目标、认知、处境、关系、外显反应及行动结果记为时点状态；区分 OBSERVATION、EXPLICIT_STATEMENT 和 INTERPRETATION。心理解释不能伪装为直接观察。
+- 使用既有分集人物/事件/证据 ID，knowledge 维度引用原 knowledge_states，不重复建立相互矛盾的认知事实。标注 audience_available_sec，禁止后续揭晓倒灌早期。
+- 用 `character_state.py import` 导入候选，始终 UNREVIEWED；通过人物状态审核页或 review 命令记录审核者、理由、原片核实与依赖快照。过期审核不能沿用。
+- 用 `timeline --character ... --as-of ... [--at-sec ...]` 检索。跨集身份沿用已有映射和观众可见性声明；不凭名字自动合并、不让旧状态跨集自动延续。
+- 用 `compile` 保守提取显式变化前后两端的素材，保留 state/change/event/evidence ID；不凭先后推断状态变化的因果，不为凑时长拆掉必要铺垫。没有合格状态素材时明确缺失。
+- 只把审核有效、非解释性的记录用于自动选材；新剪辑仍待审，继续使用版本批准及成片复核流程。状态记录是辅助理解，不代表自动读心或自动完成完整人物弧线。

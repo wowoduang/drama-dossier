@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Drama Dossier optional character-state candidates v4.3",
+  "description": "结构约束；跨引用、时序、审核快照与证据归属由 Python 校验。导入无条件设为 UNREVIEWED。",
+  "type": "object",
+  "required": [
+    "episode_id",
+    "character_states",
+    "character_state_changes"
+  ],
+  "properties": {
+    "episode_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "character_states": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/state"
+      }
+    },
+    "character_state_changes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/change"
+      }
+    }
+  },
+  "$defs": {
+    "state": {
+      "type": "object",
+      "required": [
+        "state_id",
+        "character_id",
+        "dimension",
+        "aspect",
+        "value",
+        "description",
+        "basis",
+        "certainty",
+        "playback_time",
+        "audience_available_sec",
+        "evidence_ids"
+      ],
+      "properties": {
+        "character_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "playback_time": {
+          "type": "number",
+          "minimum": 0
+        },
+        "audience_available_sec": {
+          "type": "number",
+          "minimum": 0
+        },
+        "event_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "knowledge_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_status": {
+          "enum": [
+            "UNREVIEWED",
+            "PASS",
+            "INCORRECT",
+            "NEED_EVIDENCE",
+            "DISPUTED"
+          ]
+        },
+        "editorial_priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "state_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dimension": {
+          "enum": [
+            "goal",
+            "knowledge",
+            "situation",
+            "relationship",
+            "emotion",
+            "action_result"
+          ]
+        },
+        "aspect": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "basis": {
+          "enum": [
+            "OBSERVATION",
+            "EXPLICIT_STATEMENT",
+            "INTERPRETATION"
+          ]
+        },
+        "certainty": {
+          "enum": [
+            "F1_DIRECT",
+            "F2_CORROBORATED",
+            "I1_STRONG",
+            "I2_PLAUSIBLE",
+            "I3_SPECULATIVE",
+            "X_INTERPRETATION"
+          ]
+        },
+        "quote": {
+          "type": "string"
+        },
+        "target_character_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "valid_until_sec": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "change": {
+      "type": "object",
+      "required": [
+        "change_id",
+        "character_id",
+        "from_state_id",
+        "to_state_id",
+        "playback_time",
+        "audience_available_sec",
+        "event_ids",
+        "evidence_ids",
+        "reason"
+      ],
+      "properties": {
+        "character_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "playback_time": {
+          "type": "number",
+          "minimum": 0
+        },
+        "audience_available_sec": {
+          "type": "number",
+          "minimum": 0
+        },
+        "event_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "knowledge_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_status": {
+          "enum": [
+            "UNREVIEWED",
+            "PASS",
+            "INCORRECT",
+            "NEED_EVIDENCE",
+            "DISPUTED"
+          ]
+        },
+        "editorial_priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "change_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "from_state_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "to_state_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "link_type": {
+          "const": "CONTEXT"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

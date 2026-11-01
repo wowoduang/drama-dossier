@@ -10,7 +10,7 @@ import argparse, json
 from pathlib import Path
 from typing import Any
 
-VERSION="4.2.0"
+VERSION="4.3.0"
 from continuity_review import approved_candidates
 ROLE_PROFILES={
     "setup":{"target_sec":4.5,"min_sec":2.5,"max_sec":8.0,"transition":"CUT","pace":"measured","reason":"给观众时间建立人物、地点或风险"},
@@ -53,6 +53,8 @@ def plan_director(project:dict[str,Any], observations:dict[str,Any]|None=None, p
         target=max(rp["min_sec"],min(rp["max_sec"],target))
         suggestions.append({
             "clip_id":clip.get("clip_id"),"episode_id":clip.get("episode_id"),
+            "character_state_ids":clip.get("character_state_ids",[]),
+            "character_state_change_ids":clip.get("character_state_change_ids",[]),
             "narrative_role":role,"current_duration_sec":round(duration,3),
             "target_duration_sec":round(target,3),"min_duration_sec":rp["min_sec"],
             "max_duration_sec":rp["max_sec"],"pacing":rp["pace"],
@@ -100,6 +102,8 @@ def shot_alternatives(project, continuity):
                 selected = [shots[i] for i in c['shot_ids']]
             start, end = min(s['start_sec'] for s in selected), max(s['end_sec'] for s in selected)
             if not clip.get('source_video') or start < clip['start_sec'] or end > clip['end_sec']:
+                continue
+            if any(start > r['start_sec'] or end < r['end_sec'] for r in clip.get('state_evidence_ranges', [])):
                 continue
             if start == clip['start_sec'] and end == clip['end_sec']:
                 continue

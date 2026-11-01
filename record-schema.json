@@ -245,5 +245,7 @@
       "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED",
       "note": "描述该主体在该时点的认知状态，不以后续揭示倒灌"
     }
-  ]
+  ],
+  "character_states": [],
+  "character_state_changes": []
 }

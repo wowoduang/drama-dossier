@@ -1,0 +1,65 @@
+{
+  "character_states": [
+    {
+      "state_id": "S1",
+      "character_id": "A",
+      "dimension": "goal",
+      "aspect": "primary",
+      "value": "信任同伴并等待",
+      "description": "主角明确说我相信你",
+      "basis": "EXPLICIT_STATEMENT",
+      "quote": "我相信你",
+      "certainty": "F1_DIRECT",
+      "playback_time": 11,
+      "audience_available_sec": 12,
+      "event_ids": [
+        "E1"
+      ],
+      "evidence_ids": [
+        "V1"
+      ],
+      "review_status": "UNREVIEWED"
+    },
+    {
+      "state_id": "S2",
+      "character_id": "A",
+      "dimension": "goal",
+      "aspect": "primary",
+      "value": "主动调查",
+      "description": "主角明确决定亲自调查",
+      "basis": "EXPLICIT_STATEMENT",
+      "quote": "我要亲自查清楚",
+      "certainty": "F1_DIRECT",
+      "playback_time": 31,
+      "audience_available_sec": 32,
+      "event_ids": [
+        "E2"
+      ],
+      "evidence_ids": [
+        "V2"
+      ],
+      "review_status": "UNREVIEWED"
+    }
+  ],
+  "character_state_changes": [
+    {
+      "change_id": "CH1",
+      "character_id": "A",
+      "from_state_id": "S1",
+      "to_state_id": "S2",
+      "playback_time": 31,
+      "audience_available_sec": 32,
+      "event_ids": [
+        "E2"
+      ],
+      "evidence_ids": [
+        "V2"
+      ],
+      "reason": "目标由等待转为调查，仅记录状态变化及事件上下文",
+      "link_type": "CONTEXT",
+      "editorial_priority": 90,
+      "review_status": "UNREVIEWED"
+    }
+  ],
+  "episode_id": "EP001"
+}
