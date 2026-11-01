@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0.0",
+  "plan_id": "PLAN_DEMO_001",
+  "series_id": "SERIES01",
+  "title": "从信任到背叛再到复仇",
+  "goal": "讲清楚主角如何信任对方、发现背叛、决定反击并完成复仇",
+  "viewpoint": {"type": "CHARACTER", "character_id": "GCHR_EXAMPLE"},
+  "sequence_strategy": "CHRONOLOGICAL",
+  "reorder_reason": "",
+  "target_duration_sec": 300,
+  "required_roles": ["setup", "peak", "reaction", "payoff"],
+  "segments": [
+    {"segment_id": "SEG_SETUP", "role": "setup", "episode_id": "EP001", "event_ids": ["EVT_TRUST"], "rationale": "建立双方初始信任", "evidence_refs": ["EP001:EVD001"], "review_status": "UNREVIEWED"},
+    {"segment_id": "SEG_PEAK", "role": "peak", "episode_id": "EP008", "event_ids": ["EVT_REVEAL"], "rationale": "主角发现背叛事实", "evidence_refs": ["EP008:EVD011"], "review_status": "UNREVIEWED"},
+    {"segment_id": "SEG_REACTION", "role": "reaction", "episode_id": "EP008", "event_ids": ["EVT_DECISION"], "rationale": "主角决定反击", "evidence_refs": ["EP008:EVD012"], "review_status": "UNREVIEWED"},
+    {"segment_id": "SEG_PAYOFF", "role": "payoff", "episode_id": "EP023", "event_ids": ["EVT_REVENGE"], "rationale": "复仇行动取得结果", "evidence_refs": ["EP023:EVD090"], "review_status": "UNREVIEWED"}
+  ],
+  "continuity_links": [
+    {"from_event": "EP001:EVT_TRUST", "to_event": "EP008:EVT_REVEAL", "basis": "CROSS_EPISODE_CAUSAL", "edge_id": "XCAU_EXAMPLE_01"},
+    {"from_event": "EP008:EVT_REVEAL", "to_event": "EP008:EVT_DECISION", "basis": "LOCAL_CAUSAL", "edge_id": "CAU_EXAMPLE_08"},
+    {"from_event": "EP008:EVT_DECISION", "to_event": "EP023:EVT_REVENGE", "basis": "CROSS_EPISODE_CAUSAL", "edge_id": "XCAU_EXAMPLE_02"}
+  ],
+  "missing_roles": [],
+  "risk_flags": ["以上 ID 仅为格式示例，必须替换成数据库中真实存在且经过审核的 ID"],
+  "review_status": "UNREVIEWED",
+  "review_history": []
+}

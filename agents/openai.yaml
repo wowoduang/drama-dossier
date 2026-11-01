@@ -1,0 +1,3 @@
+interface:
+  display_name: "剧情理解与智能剪辑"
+  short_description: "跨集理解整部剧，支持剧透安全检索、故事弧编译、正反打与反应镜头候选、动作连续性审核及可追溯智能剪辑"

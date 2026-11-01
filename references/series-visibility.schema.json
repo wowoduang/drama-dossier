@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Series Entity Visibility Declaration",
+  "type": "object",
+  "required": [
+    "entity_type",
+    "entity_id",
+    "effective_episode_id",
+    "effective_episode_number",
+    "evidence_refs",
+    "reason",
+    "review_status"
+  ],
+  "properties": {
+    "entity_type": {
+      "enum": [
+        "character",
+        "storyline",
+        "thread",
+        "causal_edge"
+      ]
+    },
+    "entity_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "effective_episode_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "effective_episode_number": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[^:]+:.+$"
+      }
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewer": {
+      "type": "string"
+    },
+    "review_status": {
+      "const": "PASS"
+    }
+  },
+  "additionalProperties": false
+}

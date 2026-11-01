@@ -1,0 +1,35 @@
+{
+  "review_version": "1.0",
+  "observations": [
+    {
+      "observation_id": "OBS_0001",
+      "start_sec": 12.4,
+      "end_sec": 16.8,
+      "frame_refs": ["frame_00012.400_uniform_sample.jpg"],
+      "visual_description": "画面右侧的人把桌面上的信封推向对面人物；是否被对方接过仍需回看连续镜头。",
+      "visible_person_descriptions": ["右侧穿深色衣服的人，身份未确认", "左侧坐着的人，身份未确认"],
+      "actions": ["将信封推向对面人物"],
+      "continuity_notes": "单帧无法证明对方是否接过信封；需要回看前后镜头。",
+      "confidence": "medium",
+      "alternatives": ["也可能只是把信封移到桌子另一侧"]
+    }
+  ],
+  "event_candidates": [
+    {
+      "playback_time": 14.1,
+      "action": "将信封推向对面人物",
+      "actor": null,
+      "patient": null,
+      "recipient": null,
+      "target": null,
+      "modality": "actual",
+      "polarity": "positive",
+      "certainty": "I2_PLAUSIBLE",
+      "quote": "",
+      "observation_index": 0,
+      "evidence_ids": [],
+      "semantic_note": "动作对象与是否完成交付仍待连续镜头核对。"
+    }
+  ],
+  "scene_candidates": []
+}

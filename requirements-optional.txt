@@ -1,0 +1,5 @@
+# Optional: generate JPG storyboard contact sheets
+Pillow>=10.0
+
+# Optional: run local ASR transcription with scripts/transcribe.py
+faster-whisper>=1.0

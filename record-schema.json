@@ -1,0 +1,249 @@
+{
+  "schema_version": "3.5.0",
+  "episode": {
+    "episode_id": "E001",
+    "title": "",
+    "source_version": "",
+    "duration_sec": 0
+  },
+  "evidence": [
+    {
+      "evidence_id": "EVD001",
+      "type": "SUB|VIS|AUD|ASR|OCR|OFF|INF",
+      "source": "",
+      "start_sec": 0,
+      "end_sec": 0,
+      "raw": "",
+      "observation": "",
+      "quality": "high|medium|low",
+      "locator": "",
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED"
+    }
+  ],
+  "characters": [
+    {
+      "character_id": "CHR001",
+      "canonical_name": "",
+      "aliases": [],
+      "identity_status": "confirmed|probable|unknown",
+      "evidence_ids": [],
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED"
+    }
+  ],
+  "appearances": [
+    {
+      "appearance_id": "AP001",
+      "character_id": "CHR001",
+      "scene_id": "SCN001",
+      "start_sec": 0,
+      "end_sec": 0,
+      "look": "",
+      "speaker_status": "in_frame|off_screen|voiceover|unknown",
+      "evidence_ids": [],
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED"
+    }
+  ],
+  "scenes": [
+    {
+      "scene_id": "SCN001",
+      "playback_start": 0,
+      "playback_end": 0,
+      "story_time": "",
+      "location": "",
+      "boundary_confidence": "certain|probable|uncertain",
+      "evidence_ids": [],
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "EVT001",
+      "scene_id": "SCN001|null",
+      "playback_time": 0,
+      "story_time": "",
+      "actor": "CHR001|null",
+      "action": "",
+      "patient": "CHR002|null",
+      "recipient": "CHR003|null",
+      "target": "CHR004|null",
+      "modality": "actual|planned|commanded|desired|threatened|hypothetical|recalled|imagined",
+      "polarity": "positive|negative",
+      "quote": "",
+      "evidence_ids": [],
+      "certainty": "F1_DIRECT|F2_CORROBORATED|I1_STRONG|I2_PLAUSIBLE|I3_SPECULATIVE|X_INTERPRETATION",
+      "highlight_dimensions": {
+        "importance": 0,
+        "emotion": 0,
+        "conflict": 0,
+        "twist": 0,
+        "suspense": 0,
+        "visual": 0,
+        "standalone": 0
+      },
+      "context_required": "low|medium|high",
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED"
+    }
+  ],
+  "relations": [
+    {
+      "relation_id": "REL001",
+      "source_character": "CHR001",
+      "target_character": "CHR002",
+      "type": "",
+      "valid_from_event": "EVT001|null",
+      "valid_to_event": "EVT002|null",
+      "status": "confirmed|inferred|disputed",
+      "evidence_ids": [],
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED"
+    }
+  ],
+  "causal_edges": [
+    {
+      "cause_id": "CAU001",
+      "from_event": "EVT001",
+      "to_event": "EVT002",
+      "type": "CAUSES|ENABLES|BLOCKS|MOTIVATES|REVEALS|FOLLOWS|POSSIBLE_CAUSE",
+      "reasoning": "",
+      "evidence_ids": [],
+      "counter_evidence_ids": [],
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED"
+    }
+  ],
+  "threads": [
+    {
+      "thread_id": "TH001",
+      "description": "",
+      "first_event": "EVT001",
+      "status": "OPEN|HINTED|PAID_OFF|MISDIRECT|ABANDONED",
+      "evidence_ids": [],
+      "resolution_evidence_ids": [],
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED"
+    }
+  ],
+  "storylines": [
+    {
+      "storyline_id": "STL001",
+      "title": "",
+      "summary": "",
+      "character_ids": [],
+      "event_ids": [],
+      "status": "ACTIVE|DORMANT|RESOLVED",
+      "evidence_ids": [],
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED"
+    }
+  ],
+  "highlights": [
+    {
+      "highlight_id": "HL001",
+      "start_sec": 0,
+      "end_sec": 0,
+      "title": "",
+      "reason": "",
+      "event_ids": [],
+      "storyline_ids": [],
+      "story_arc_ids": [],
+      "source_arc_id": "ARC001|null",
+      "evidence_ids": [],
+      "dimensions": {
+        "importance": 0,
+        "emotion": 0,
+        "conflict": 0,
+        "twist": 0,
+        "suspense": 0,
+        "visual": 0,
+        "standalone": 0
+      },
+      "total_score": 0,
+      "score_profile": "30s|60s|3m|5m",
+      "score_source": "event.highlight_dimensions|deterministic_fallback|human|story_arc_candidate",
+      "context_required": "low|medium|high",
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED"
+    }
+  ],
+  "media_cues": [
+    {
+      "cue_id": "CUE001",
+      "cue_type": "shot_change|audio_peak|audio_silence|subtitle_emphasis|subtitle_keyword|dialogue_burst|motion_candidate|ocr_text|speech_activity|frame_sample|unknown",
+      "start_sec": 0,
+      "end_sec": 0,
+      "score": 0.0,
+      "source": "",
+      "confidence": "low|medium|high",
+      "details": {}
+    }
+  ],
+  "story_arcs": [
+    {
+      "arc_id": "ARC001",
+      "title": "",
+      "arc_type": "unclassified",
+      "narrative_shape": "setup_peak_reaction_payoff",
+      "start_sec": 0,
+      "end_sec": 0,
+      "anchor_sec": 0,
+      "anchor_event_id": "EVT001|null",
+      "segments": [
+        {
+          "role": "setup|peak|reaction|payoff|bridge",
+          "start_sec": 0,
+          "end_sec": 0,
+          "description": "",
+          "event_ids": [],
+          "cue_ids": [],
+          "semantic_status": "UNCLASSIFIED_CANDIDATE"
+        }
+      ],
+      "event_ids": [],
+      "storyline_ids": [],
+      "evidence_ids": [],
+      "cue_ids": [],
+      "dimensions": {
+        "importance": 0,
+        "emotion": 0,
+        "conflict": 0,
+        "twist": 0,
+        "suspense": 0,
+        "visual": 0,
+        "standalone": 0
+      },
+      "total_score": 0,
+      "score_source": "hybrid_multimodal_heuristic|human",
+      "candidate_source": "dossier_event|media_signal_cluster",
+      "semantic_status": "NEEDS_CHATGPT_REVIEW|HUMAN_CONFIRMED|REJECTED",
+      "context_required": "low|medium|high",
+      "missing_roles": [],
+      "risk_flags": [],
+      "semantic_questions": [],
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED"
+    }
+  ],
+  "review_history": [
+    {
+      "review_id": "REV001",
+      "object_id": "EVT001",
+      "collection": "events",
+      "status": "PASS|NEED_EVIDENCE|INCORRECT|DISPUTED",
+      "old_value": {},
+      "new_value": {},
+      "reason": "",
+      "evidence_ids": [],
+      "reviewer": "",
+      "timestamp": "",
+      "version": 1
+    }
+  ],
+  "knowledge_states": [
+    {
+      "knowledge_id": "KNW001",
+      "subject_type": "CHARACTER|VIEWER",
+      "character_id": "CHR001|null",
+      "proposition": "某个可核验命题，例如李四的真实身份",
+      "state": "KNOWS|SUSPECTS|BELIEVES|FALSE_BELIEF|UNAWARE|FORGOT|UNCERTAIN",
+      "playback_time": 0,
+      "event_id": "EVT001|null",
+      "evidence_ids": [],
+      "review_status": "UNREVIEWED|PASS|NEED_EVIDENCE|INCORRECT|DISPUTED",
+      "note": "描述该主体在该时点的认知状态，不以后续揭示倒灌"
+    }
+  ]
+}

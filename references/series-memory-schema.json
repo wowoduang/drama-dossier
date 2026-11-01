@@ -1,0 +1,190 @@
+{
+  "engine_version": "3.7.0",
+  "storage": "SQLite",
+  "principles": {
+    "episode_dossier_is_source_of_truth": true,
+    "series_database_is_rebuildable_projection": true,
+    "identity_matching_auto_merge": false,
+    "human_link_reason_required": true,
+    "original_video_upload_required": false,
+    "knowledge_state_is_time_scoped": true,
+    "cross_episode_causality_requires_human_review": true,
+    "episode_replace_reopens_related_causal_edges": true
+  },
+  "entities": {
+    "series": [
+      "series_id",
+      "title"
+    ],
+    "episodes": [
+      "episode_id",
+      "episode_number",
+      "title",
+      "source_version",
+      "duration_sec",
+      "dossier_path",
+      "dossier_sha256",
+      "schema_version",
+      "imported_at"
+    ],
+    "global_characters": [
+      "global_character_id",
+      "canonical_name",
+      "aliases"
+    ],
+    "character_mentions": [
+      "episode_id",
+      "local_character_id",
+      "global_character_id",
+      "identity_status",
+      "review_status",
+      "evidence_ids"
+    ],
+    "events": [
+      "episode_id",
+      "event_id",
+      "playback_time",
+      "actor_global_id",
+      "patient_global_id",
+      "recipient_global_id",
+      "target_global_id",
+      "action",
+      "modality",
+      "certainty",
+      "review_status",
+      "evidence_ids"
+    ],
+    "relations": [
+      "episode_id",
+      "relation_id",
+      "source_global_id",
+      "target_global_id",
+      "relation_type",
+      "valid_from_event",
+      "valid_to_event",
+      "review_status",
+      "evidence_ids"
+    ],
+    "global_storylines": [
+      "global_storyline_id",
+      "title",
+      "description"
+    ],
+    "global_threads": [
+      "global_thread_id",
+      "description"
+    ],
+    "thread_mentions": [
+      "episode_id",
+      "local_thread_id",
+      "global_thread_id",
+      "status",
+      "first_event",
+      "review_status",
+      "evidence_ids"
+    ],
+    "storyline_mentions": [
+      "episode_id",
+      "local_storyline_id",
+      "global_storyline_id",
+      "summary",
+      "status",
+      "review_status",
+      "event_ids"
+    ],
+    "identity_candidates": [
+      "candidate_id",
+      "left_episode_id",
+      "left_local_character_id",
+      "right_episode_id",
+      "right_local_character_id",
+      "match_key",
+      "status"
+    ],
+    "storyline_candidates": [
+      "candidate_id",
+      "left_episode_id",
+      "left_local_storyline_id",
+      "right_episode_id",
+      "right_local_storyline_id",
+      "match_key",
+      "status"
+    ],
+    "thread_candidates": [
+      "candidate_id",
+      "left_episode_id",
+      "left_local_thread_id",
+      "right_episode_id",
+      "right_local_thread_id",
+      "match_key",
+      "status"
+    ],
+    "audit_log": [
+      "audit_id",
+      "action",
+      "object_ref",
+      "reason",
+      "reviewer",
+      "before_json",
+      "after_json",
+      "timestamp"
+    ],
+    "episode_causal_edges": [
+      "episode_id",
+      "cause_id",
+      "from_event",
+      "to_event",
+      "edge_type",
+      "reasoning",
+      "review_status",
+      "evidence_ids",
+      "counter_evidence_ids"
+    ],
+    "episode_story_arcs": [
+      "episode_id",
+      "arc_id",
+      "title",
+      "arc_type",
+      "segments",
+      "event_ids",
+      "storyline_ids",
+      "semantic_status",
+      "review_status",
+      "score",
+      "context_required"
+    ],
+    "character_knowledge": [
+      "episode_id",
+      "knowledge_id",
+      "episode_number",
+      "subject_type",
+      "subject_global_id",
+      "proposition",
+      "state",
+      "playback_time",
+      "event_id",
+      "evidence_ids",
+      "review_status"
+    ],
+    "cross_episode_causal_edges": [
+      "edge_id",
+      "from_episode_id",
+      "from_event_id",
+      "to_episode_id",
+      "to_event_id",
+      "edge_type",
+      "reasoning",
+      "evidence_refs",
+      "counter_evidence_refs",
+      "review_status",
+      "review_reason",
+      "reviewer"
+    ]
+  },
+  "import_policy": {
+    "same_sha256": "skip",
+    "changed_existing_episode": "require --replace",
+    "episode_commit": "independent_transaction",
+    "resume": "re-import folder; unchanged dossiers are skipped"
+  }
+}

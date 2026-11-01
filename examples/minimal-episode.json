@@ -1,0 +1,115 @@
+{
+  "schema_version": "3.4.0",
+  "episode": {
+    "episode_id": "E01",
+    "title": "最小示例",
+    "source_version": "cut-A",
+    "duration_sec": 120
+  },
+  "evidence": [
+    {
+      "evidence_id": "EVD1",
+      "type": "SUB",
+      "source": "episode01.srt",
+      "start_sec": 1.0,
+      "end_sec": 2.0,
+      "raw": "把信给他。",
+      "observation": "",
+      "quality": "high",
+      "locator": "subtitle cue 1",
+      "review_status": "PASS"
+    }
+  ],
+  "characters": [
+    {
+      "character_id": "CHR1",
+      "canonical_name": "甲",
+      "aliases": [],
+      "identity_status": "confirmed",
+      "evidence_ids": [
+        "EVD1"
+      ],
+      "review_status": "PASS"
+    },
+    {
+      "character_id": "CHR2",
+      "canonical_name": "乙",
+      "aliases": [],
+      "identity_status": "confirmed",
+      "evidence_ids": [],
+      "review_status": "PASS"
+    }
+  ],
+  "appearances": [],
+  "scenes": [
+    {
+      "scene_id": "SCN1",
+      "playback_start": 0.0,
+      "playback_end": 10.0,
+      "story_time": "",
+      "location": "室内",
+      "boundary_confidence": "probable",
+      "evidence_ids": [
+        "EVD1"
+      ],
+      "review_status": "PASS"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "EVT1",
+      "scene_id": "SCN1",
+      "playback_time": 1.0,
+      "story_time": "",
+      "actor": "CHR1",
+      "action": "命令把信交给乙",
+      "patient": null,
+      "recipient": "CHR2",
+      "target": null,
+      "modality": "commanded",
+      "polarity": "positive",
+      "quote": "把信给他。",
+      "evidence_ids": [
+        "EVD1"
+      ],
+      "certainty": "F1_DIRECT",
+      "highlight_dimensions": {
+        "importance": 72,
+        "emotion": 35,
+        "conflict": 55,
+        "twist": 20,
+        "suspense": 45,
+        "visual": 30,
+        "standalone": 65
+      },
+      "context_required": "medium",
+      "review_status": "PASS"
+    }
+  ],
+  "relations": [],
+  "causal_edges": [],
+  "threads": [],
+  "storylines": [
+    {
+      "storyline_id": "STL1",
+      "title": "信件任务",
+      "summary": "围绕信件交付形成的行动线。",
+      "character_ids": [
+        "CHR1",
+        "CHR2"
+      ],
+      "event_ids": [
+        "EVT1"
+      ],
+      "status": "ACTIVE",
+      "evidence_ids": [
+        "EVD1"
+      ],
+      "review_status": "PASS"
+    }
+  ],
+  "highlights": [],
+  "review_history": [],
+  "media_cues": [],
+  "story_arcs": []
+}

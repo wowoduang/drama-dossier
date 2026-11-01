@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Drama Dossier AI Visual Review",
+  "type": "object",
+  "required": ["review_version", "observations", "event_candidates"],
+  "properties": {
+    "review_version": {"const": "1.0"},
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["start_sec", "end_sec", "visual_description"],
+        "properties": {
+          "observation_id": {"type": "string"},
+          "start_sec": {"type": "number", "minimum": 0},
+          "end_sec": {"type": "number", "minimum": 0},
+          "frame_refs": {"type": "array", "items": {"type": "string"}},
+          "visual_description": {"type": "string", "minLength": 1},
+          "visible_person_descriptions": {"type": "array", "items": {"type": "string"}},
+          "actions": {"type": "array", "items": {"type": "string"}},
+          "continuity_notes": {"type": "string"},
+          "confidence": {"enum": ["high", "medium", "low"]},
+          "alternatives": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "event_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["playback_time", "action"],
+        "properties": {
+          "playback_time": {"type": "number", "minimum": 0},
+          "action": {"type": "string", "minLength": 1},
+          "actor": {"type": ["string", "null"]},
+          "patient": {"type": ["string", "null"]},
+          "recipient": {"type": ["string", "null"]},
+          "target": {"type": ["string", "null"]},
+          "scene_id": {"type": ["string", "null"]},
+          "story_time": {"type": "string"},
+          "modality": {"enum": ["actual", "planned", "commanded", "desired", "threatened", "hypothetical", "recalled", "imagined"]},
+          "polarity": {"enum": ["positive", "negative"]},
+          "certainty": {"enum": ["F1_DIRECT", "F2_CORROBORATED", "I1_STRONG", "I2_PLAUSIBLE", "I3_SPECULATIVE", "X_INTERPRETATION"]},
+          "quote": {"type": "string"},
+          "observation_index": {"type": "integer", "minimum": 0},
+          "evidence_ids": {"type": "array", "items": {"type": "string"}},
+          "semantic_note": {"type": "string"}
+        }
+      }
+    },
+    "scene_candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["start_sec", "end_sec"],
+        "properties": {
+          "start_sec": {"type": "number", "minimum": 0},
+          "end_sec": {"type": "number", "minimum": 0},
+          "score": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+          "reason": {"type": "string"}
+        }
+      }
+    }
+  }
+}

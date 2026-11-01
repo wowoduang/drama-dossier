@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Drama Dossier · 全剧记忆库</title>
+<style>
+:root{color-scheme:dark;--bg:#101318;--panel:#191e27;--panel2:#202735;--line:#303949;--text:#e9eef6;--muted:#9ba8ba;--accent:#8bb8ff;--good:#8bd5a8;--warn:#f0c674}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}h1{font-size:20px;margin:0}h2{font-size:16px;margin:0 0 12px}h3{font-size:14px;margin:0 0 8px}.muted{color:var(--muted)}button,.filebtn,input{font:inherit}button,.filebtn{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer}button:hover,.filebtn:hover{border-color:var(--accent)}input[type=search]{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:8px;min-width:240px}.hidden{display:none}.wrap{padding:18px 22px;max-width:1500px;margin:auto}.stats{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:10px;margin-bottom:16px}.stat,.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px}.stat{padding:12px 14px}.stat strong{display:block;font-size:22px}.layout{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:14px}.panel{padding:14px;min-width:0}.list{display:grid;gap:8px;max-height:65vh;overflow:auto}.item{padding:10px;border:1px solid var(--line);border-radius:9px;background:#151a22;cursor:pointer}.item.active{border-color:var(--accent);background:#1a2638}.item strong{display:block}.tag{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:2px 7px;color:var(--muted);font-size:11px;margin:4px 4px 0 0}.candidate,.event{padding:10px;border:1px solid var(--line);border-radius:9px;margin:8px 0;background:#151a22}.candidate code{display:block;white-space:normal;overflow-wrap:anywhere;color:var(--warn);margin:6px 0}.empty{padding:24px;color:var(--muted);text-align:center}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar .spacer{flex:1}.section{margin-top:14px}.timeline{border-left:2px solid var(--line);margin:8px 0 0 8px;padding-left:14px;display:grid;gap:12px}.event{position:relative}.event:before{content:"";position:absolute;width:8px;height:8px;border-radius:50%;background:var(--accent);left:-20px;top:16px}.event .time{color:var(--accent);font-variant-numeric:tabular-nums}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:850px){.layout{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.list{max-height:35vh}.grid2{grid-template-columns:1fr}}
+</style></head><body>
+<header><div><h1>Drama Dossier · 全剧记忆库</h1><div class="muted">跨集人物、事件、关系、剧情线与证据索引 · 只读可视化</div></div><a class="filebtn" href="series-workbench.html">跨集剪辑工作台</a><a class="filebtn" href="story-arc-workbench.html">故事弧审核台</a><a class="filebtn" href="http://127.0.0.1:8766/">剧透安全检索</a><a class="filebtn" href="dedupe-review.html">重复素材审核</a><label class="filebtn">载入 series-memory.json<input id="file" class="hidden" type="file" accept="application/json,.json"></label></header>
+<div class="wrap"><div id="empty" class="panel empty">请先导出全剧记忆：<br><code>python scripts/series_memory.py export-memory work/series.sqlite work/series-memory.json --series-id SERIES01</code><br>然后在此载入 JSON。原始视频不需要上传到这个页面。</div>
+<div id="app" class="hidden"><div class="stats"><div class="stat"><span class="muted">已入库集数</span><strong id="nEpisodes">0</strong></div><div class="stat"><span class="muted">全剧人物实体</span><strong id="nChars">0</strong></div><div class="stat"><span class="muted">全剧剧情线</span><strong id="nLines">0</strong></div><div class="stat"><span class="muted">待确认身份候选</span><strong id="nCandidates">0</strong></div></div>
+<div class="toolbar section"><input id="search" type="search" placeholder="搜索人物、事件、台词、剧情线…"><span class="muted" id="seriesTitle"></span><span class="spacer"></span><button id="tabChars">人物时间线</button><button id="tabLines">剧情线</button><button id="tabThreads">伏笔线索</button><button id="tabKnowledge">人物认知</button><button id="tabCausal">跨集因果</button><button id="tabVisibility">剧透可见性</button><button id="tabCandidates">跨集待确认</button><button id="tabAudit">审核日志</button><button id="tabEpisodes">分集索引</button></div>
+<div class="layout section"><section class="panel"><h2 id="listTitle">全剧人物</h2><div id="list" class="list"></div></section><section class="panel"><div id="detail"><div class="empty">选择左侧对象查看跨集记录。</div></div></section></div></div></div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  let data = null, tab = 'chars', selected = null;
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const allCandidates = () => [
+    ...(data.identity_candidates || []).map(x => ({...x, kind:'identity'})),
+    ...(data.storyline_candidates || []).map(x => ({...x, kind:'storyline'})),
+    ...(data.thread_candidates || []).map(x => ({...x, kind:'thread'}))
+  ];
+  function load(d) {
+    data = d;
+    $('empty').classList.add('hidden'); $('app').classList.remove('hidden');
+    $('seriesTitle').textContent = `${d.series?.title || ''} · ${d.series?.series_id || ''}`;
+    $('nEpisodes').textContent = (d.episodes || []).length;
+    $('nChars').textContent = (d.characters || []).length;
+    $('nLines').textContent = (d.storylines || []).length;
+    $('nCandidates').textContent = allCandidates().length;
+    render();
+  }
+  function setTab(t) { tab = t; selected = null; render(); }
+  function matches(x, q) { return !q || JSON.stringify(x).toLowerCase().includes(q.toLowerCase()); }
+  function render() {
+    if (!data) return;
+    const q = $('search').value.trim();
+    let rows = [], title = '';
+    if (tab === 'chars') {
+      title = '全剧人物';
+      rows = (data.characters || []).filter(x => matches(x,q)).map(x => ({id:x.global_character_id,label:x.canonical_name,sub:`${x.mentions?.length || 0} 集出现 · ${x.event_timeline?.length || 0} 条事件`,obj:x}));
+    } else if (tab === 'lines') {
+      title = '全剧剧情线';
+      rows = (data.storylines || []).filter(x => matches(x,q)).map(x => ({id:x.global_storyline_id,label:x.title,sub:`${x.mentions?.length || 0} 集 · ${x.description || ''}`,obj:x}));
+    } else if (tab === 'threads') {
+      title = '全剧伏笔 / 线索';
+      rows = (data.threads || []).filter(x => matches(x,q)).map(x => ({id:x.global_thread_id,label:x.description,sub:`${x.mentions?.length || 0} 集出现`,obj:x}));
+    } else if (tab === 'knowledge') {
+      title = '人物/观众认知时间线';
+      rows = (data.knowledge_states || []).filter(x => matches(x,q)).map(x => ({id:`${x.episode_id}:${x.knowledge_id}`,label:`${x.episode_id} · ${x.subject_type==='VIEWER'?'观众':x.subject_global_id || x.subject_name} · ${x.state}`,sub:`${x.proposition} · ${x.playback_time}s · ${x.review_status}`,obj:x}));
+    } else if (tab === 'causal') {
+      title = '跨集因果连接';
+      rows = (data.cross_episode_causal_edges || []).filter(x => matches(x,q)).map(x => ({id:x.edge_id,label:`${x.from_episode_id}:${x.from_event_id} → ${x.to_episode_id}:${x.to_event_id}`,sub:`${x.edge_type} · ${x.review_status} · ${x.reasoning}`,obj:x}));
+    } else if (tab === 'visibility') {
+      title = '跨集实体的剧情可见时间';
+      rows = (data.series_visibility || []).filter(x => matches(x,q)).map(x => ({id:`${x.entity_type}:${x.entity_id}`,label:`${x.entity_type} · ${x.entity_id}`,sub:`第 ${x.effective_episode_number} 集起可知 · ${x.review_status} · ${x.reason}`,obj:x}));
+    } else if (tab === 'candidates') {
+      title = '待人工确认';
+      rows = allCandidates().filter(x => matches(x,q)).map(x => {
+        let label, sub;
+        if (x.kind === 'identity') {
+          label = `人物：${x.left_episode_id}:${x.left_local_character_id} ↔ ${x.right_episode_id}:${x.right_local_character_id}`;
+          sub = `名称/别名匹配：${x.match_key}`;
+        } else if (x.kind === 'storyline') {
+          label = `剧情线：${x.left_episode_id}:${x.left_local_storyline_id} ↔ ${x.right_episode_id}:${x.right_local_storyline_id}`;
+          sub = `标题匹配：${x.match_key}`;
+        } else {
+          label = `伏笔：${x.left_episode_id}:${x.left_local_thread_id} ↔ ${x.right_episode_id}:${x.right_local_thread_id}`;
+          sub = `描述匹配：${x.match_key}`;
+        }
+        return {id:x.candidate_id,label,sub,obj:x};
+      });
+    } else if (tab === 'audit') {
+      title = '人工审核日志';
+      rows = (data.audit_log || []).filter(x => matches(x,q)).map((x,i) => ({id:x.audit_id,label:`${x.action} · ${x.object_ref}`,sub:`${x.timestamp} · ${x.reviewer || '未署名'} · ${x.reason}`,obj:x}));
+    } else if (tab === 'episodes') {
+      title = '分集索引';
+      rows = (data.episodes || []).filter(x => matches(x,q)).map(x => ({id:x.episode_id,label:`${x.episode_id} · ${x.title}`,sub:`${x.event_count} 事件 · ${x.character_count} 人物 · ${Math.round(x.duration_sec || 0)} 秒`,obj:x}));
+    }
+    $('listTitle').textContent = title;
+    $('list').innerHTML = rows.length ? rows.map(r => `<div class="item ${selected === r.id ? 'active' : ''}" data-id="${esc(r.id)}"><strong>${esc(r.label)}</strong><span class="muted">${esc(r.sub)}</span></div>`).join('') : '<div class="empty">没有匹配内容</div>';
+    $('list').querySelectorAll('.item').forEach(el => el.addEventListener('click', () => {
+      selected = el.dataset.id; render(); const row = rows.find(x => x.id === selected); if (row) showDetail(row.obj);
+    }));
+    if (selected) { const row = rows.find(x => x.id === selected); if (row) showDetail(row.obj); }
+    else $('detail').innerHTML = '<div class="empty">选择左侧对象查看跨集记录。</div>';
+  }
+  function showDetail(o) {
+    if (!o) return;
+    let html = '';
+    if (tab === 'chars') {
+      html = `<h2>${esc(o.canonical_name)}</h2><div class="muted">全剧人物 ID：${esc(o.global_character_id)}</div><div class="section">别名：${(o.aliases || []).map(x => `<span class="tag">${esc(x)}</span>`).join('') || '无'}</div><h3 class="section">分集身份记录</h3>${(o.mentions || []).map(m => `<div class="candidate"><b>${esc(m.episode_id)}</b> · ${esc(m.name)}<div class="muted">局部 ID ${esc(m.local_character_id)} · 身份 ${esc(m.identity_status)} · 审核 ${esc(m.review_status)}</div></div>`).join('')}<h3 class="section">人物事件时间线</h3><div class="timeline">${(o.event_timeline || []).map(e => `<div class="event"><div class="time">${esc(e.episode_id)} · ${Number(e.playback_time || 0).toFixed(2)}s · ${esc(e.role)}</div><b>${esc(e.action)}</b><div class="muted">${esc(e.quote)} · ${esc(e.modality)} · ${esc(e.review_status)}</div><div class="muted">事件 ${esc(e.event_id)} · 证据 ${esc((e.evidence_ids || []).join(', ') || '无')}</div></div>`).join('') || '<div class="muted">暂无关联事件</div>'}</div><div class="candidate"><b>生成此人物的跨集专辑</b><code>python scripts/series_compiler.py work/series.sqlite work/sources.json work/person-edit.json --series-id SERIES01 --character ${esc(o.global_character_id)} --preset 5m</code></div>`;
+    } else if (tab === 'lines') {
+      html = `<h2>${esc(o.title)}</h2><div class="muted">全剧剧情线 ID：${esc(o.global_storyline_id)}</div><p>${esc(o.description)}</p><h3 class="section">跨集分布</h3>${(o.mentions || []).map(m => `<div class="candidate"><b>${esc(m.episode_id)}</b> · ${esc(m.summary)}<div class="muted">状态 ${esc(m.status)} · 审核 ${esc(m.review_status)} · 事件 ${esc((m.event_ids || []).join(', ') || '无')}</div></div>`).join('')}<div class="candidate"><b>生成此剧情线的跨集专辑</b><code>python scripts/series_compiler.py work/series.sqlite work/sources.json work/storyline-edit.json --series-id SERIES01 --storyline ${esc(o.global_storyline_id)} --preset 5m</code></div>`;
+    } else if (tab === 'threads') {
+      html = `<h2>${esc(o.description)}</h2><div class="muted">全剧伏笔 ID：${esc(o.global_thread_id)}</div><h3 class="section">跨集线索状态</h3>${(o.mentions || []).map(m => `<div class="candidate"><b>${esc(m.episode_id)}</b> · ${esc(m.status)}<div class="muted">局部 ID ${esc(m.local_thread_id)} · 首次事件 ${esc(m.first_event || '未指定')} · 审核 ${esc(m.review_status)}</div><div class="muted">证据 ${esc((m.evidence_ids || []).join(', ') || '无')}</div></div>`).join('')}<div class="candidate"><b>生成此伏笔的跨集专辑</b><code>python scripts/series_compiler.py work/series.sqlite work/sources.json work/thread-edit.json --series-id SERIES01 --thread ${esc(o.global_thread_id)} --preset 5m</code></div>`;
+    } else if (tab === 'knowledge') {
+      html = `<h2>${esc(o.proposition)}</h2><div class="muted">${esc(o.episode_id)} · ${esc(o.subject_type)} · ${esc(o.subject_global_id || o.subject_name || '观众')}</div><div class="candidate"><b>认知状态：${esc(o.state)}</b><div class="muted">播放时间 ${Number(o.playback_time || 0).toFixed(2)}s · 关联事件 ${esc(o.event_id || '无')}</div><div class="muted">证据 ${esc((o.evidence_ids || []).join(', ') || '无')} · 审核 ${esc(o.review_status)}</div></div><p class="muted">注意：没有记录不等于角色不知道；只有已审核状态参与故事弧认知回溯。</p>`;
+    } else if (tab === 'causal') {
+      html = `<h2>跨集因果候选</h2><div class="candidate"><b>${esc(o.edge_type)} · ${esc(o.review_status)}</b><p>${esc(o.reasoning)}</p><div class="muted">证据：${esc((o.evidence_refs || []).join(', ') || '无')}<br>反证：${esc((o.counter_evidence_refs || []).join(', ') || '无')}<br>审核：${esc(o.review_reason || '尚未审核')} · ${esc(o.reviewer || '')}</div><code>python scripts/series_memory.py review-causal-link work/series.sqlite ${esc(o.edge_id)} --series-id SERIES01 --status PASS --reason "回看原片核实因果关系" --reviewer "审核者"</code></div>`;
+    } else if (tab === 'visibility') {
+      html = `<h2>剧透可见性声明</h2><div class="candidate"><b>${esc(o.entity_type)} · ${esc(o.entity_id)}</b><p>观众从第 ${esc(o.effective_episode_number)} 集（${esc(o.effective_episode_id)}）开始可识别该关联。</p><div class="muted">证据：${esc((o.evidence_refs || []).join(', '))}<br>审核：${esc(o.review_status)} · ${esc(o.reviewer || '未署名')}<br>理由：${esc(o.reason)}</div></div><p class="muted">该声明控制严格剧透模式下是否允许使用跨集身份/剧情线/伏笔/因果关系。可通过 series_visibility.py 重新声明更早或更晚的可见集数，修改同一实体会保留 visibility_audit。</p>`;
+    } else if (tab === 'candidates') {
+      const kind = o.kind;
+      const left = kind === 'identity' ? `${o.left_episode_id}:${o.left_local_character_id}` : kind === 'storyline' ? `${o.left_episode_id}:${o.left_local_storyline_id}` : `${o.left_episode_id}:${o.left_local_thread_id}`;
+      const right = kind === 'identity' ? `${o.right_episode_id}:${o.right_local_character_id}` : kind === 'storyline' ? `${o.right_episode_id}:${o.right_local_storyline_id}` : `${o.right_episode_id}:${o.right_local_thread_id}`;
+      const command = kind === 'identity'
+        ? `python scripts/series_memory.py link-character work/series.sqlite "${left}" "${right}" --series-id SERIES01 --reason "回看原片及证据后确认是同一人物" --reviewer "人工审核者"`
+        : kind === 'storyline'
+          ? `python scripts/series_memory.py link-storyline work/series.sqlite "${left}" "${right}" --series-id SERIES01 --reason "核实两集属于同一剧情线" --reviewer "人工审核者"`
+          : `python scripts/series_memory.py link-thread work/series.sqlite "${left}" "${right}" --series-id SERIES01 --reason "核实两集属于同一伏笔线索" --reviewer "人工审核者"`;
+      const kindName = kind === 'identity' ? '人物身份候选' : kind === 'storyline' ? '剧情线合并候选' : '伏笔/线索合并候选';
+      html = `<h2>${kindName}</h2><p>匹配依据：<b>${esc(o.match_key)}</b></p><div class="muted">这里只展示候选，不会自动合并。必须回看原片、身份线索和剧情上下文后，才执行人工确认。若证据否定该匹配，请使用 reject-candidate 将其驳回并记录理由。</div><h3 class="section">确认命令</h3><div class="candidate"><code>${esc(command)}</code><button id="copyCmd">复制命令</button></div>`;
+    } else if (tab === 'audit') {
+      html = `<h2>${esc(o.action)}</h2><div class="muted">${esc(o.object_ref)} · ${esc(o.timestamp)} · ${esc(o.reviewer || '未署名')}</div><p>${esc(o.reason)}</p><div class="grid2"><div class="candidate"><h3>变更前</h3><pre>${esc(JSON.stringify(o.before || {},null,2))}</pre></div><div class="candidate"><h3>变更后</h3><pre>${esc(JSON.stringify(o.after || {},null,2))}</pre></div></div>`;
+    } else if (tab === 'episodes') {
+      html = `<h2>${esc(o.episode_id)} · ${esc(o.title)}</h2><div class="grid2"><div class="candidate">事件数 <b>${o.event_count}</b></div><div class="candidate">人物数 <b>${o.character_count}</b></div><div class="candidate">时长 <b>${o.duration_sec}s</b></div><div class="candidate">导入时间 <b>${esc(o.imported_at)}</b></div></div><p class="muted">源档案：${esc(o.dossier_path)}<br>SHA-256：${esc(o.dossier_sha256)}</p>`;
+    }
+    $('detail').innerHTML = html;
+    const copy = $('copyCmd');
+    if (copy) copy.onclick = () => { const text = copy.previousElementSibling.textContent; navigator.clipboard?.writeText(text).then(() => copy.textContent = '已复制').catch(() => copy.textContent = '复制失败'); };
+  }
+  $('file').addEventListener('change', async e => { const f=e.target.files[0]; if(!f)return; try{load(JSON.parse(await f.text()));}catch(err){alert('JSON 读取失败：'+err.message);} });
+  $('search').addEventListener('input',()=>{selected=null;render();});
+  $('tabChars').onclick=()=>setTab('chars'); $('tabLines').onclick=()=>setTab('lines'); $('tabThreads').onclick=()=>setTab('threads'); $('tabKnowledge').onclick=()=>setTab('knowledge'); $('tabCausal').onclick=()=>setTab('causal'); $('tabVisibility').onclick=()=>setTab('visibility'); $('tabCandidates').onclick=()=>setTab('candidates'); $('tabAudit').onclick=()=>setTab('audit'); $('tabEpisodes').onclick=()=>setTab('episodes');
+})();
+</script></body></html>
