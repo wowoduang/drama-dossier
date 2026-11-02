@@ -73,7 +73,7 @@ def build_command(project,output,crf=20,preset='medium',width=1920,height=1080,f
     filter_text=build_filter(clips,indices,flags,width,height,fps)
     cmd=[ffmpeg,'-hide_banner','-y']
     for src in sources:cmd += ['-i',src]
-    cmd += ['-filter_complex_script','FILTER_FILE','-map','[outv]','-map','[outa]','-c:v','libx264','-preset',preset,'-crf',str(crf),'-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-ar','48000','-ac','2','-movflags','+faststart',str(output)]
+    cmd += ['-/filter_complex','FILTER_FILE','-map','[outv]','-map','[outa]','-c:v','libx264','-preset',preset,'-crf',str(crf),'-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-ar','48000','-ac','2','-movflags','+faststart',str(output)]
     return cmd,filter_text
 
 def main():
