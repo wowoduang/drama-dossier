@@ -54,15 +54,9 @@ def map_report(project, report):
     return out
 
 
-def render_review(project, directory, width=1920, height=1080, fps=30):
-    require_approved(project)
-    qc = continuity_qc(project)
-    if not qc['release_ready']: raise ValueError('剪辑 QC 阻塞渲染')
-    root = Path(directory)
-    # Build/validate first; never overwrite an earlier cut.
-    cmd, filters = build_command(project, root/'final.mp4', width=width, height=height, fps=fps)
-    root.mkdir(parents=True, exist_ok=False)
-    write_new(root/'project.json', project)
+
+def run_ffmpeg_with_filter_script(cmd, filters):
+    """Write filter script, close it before FFmpeg opens it, and always clean it up."""
     script_path = None
     try:
         with tempfile.NamedTemporaryFile('w', suffix='.ffscript', encoding='utf-8', delete=False) as f:
@@ -78,6 +72,18 @@ def render_review(project, directory, width=1920, height=1080, fps=30):
     finally:
         if script_path:
             Path(script_path).unlink(missing_ok=True)
+
+
+def render_review(project, directory, width=1920, height=1080, fps=30):
+    require_approved(project)
+    qc = continuity_qc(project)
+    if not qc['release_ready']: raise ValueError('剪辑 QC 阻塞渲染')
+    root = Path(directory)
+    # Build/validate first; never overwrite an earlier cut.
+    cmd, filters = build_command(project, root/'final.mp4', width=width, height=height, fps=fps)
+    root.mkdir(parents=True, exist_ok=False)
+    write_new(root/'project.json', project)
+    run_ffmpeg_with_filter_script(cmd, filters)
     report = map_report(project, inspect_video(root/'final.mp4'))
     frames = []
     for i, row in enumerate(report['timeline']):
