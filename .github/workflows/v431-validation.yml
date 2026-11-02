@@ -46,6 +46,12 @@ jobs:
         run: python scripts/build_release.py
       - name: Verify committed package matches source
         run: git diff --exit-code -- skill.zip
+      - name: Browser UI interaction smoke tests
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node .github/scripts/browser_ui_smoke.cjs
       - name: Windows default-encoding regression (tests and release build)
         if: runner.os == 'Windows' && matrix.python == '3.12'
         shell: pwsh
@@ -61,6 +67,6 @@ jobs:
       - name: Upload validated skill package
         uses: actions/upload-artifact@v4
         with:
-          name: drama-dossier-skill-${{ matrix.os }}-py${{ matrix.python }}
+          name: drama-dossier-skill-${{ matrix.os }}-py${{ matrix.python }}-py${{ matrix.python }}
           path: skill.zip
           if-no-files-found: error
