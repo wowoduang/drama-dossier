@@ -419,3 +419,8 @@ State-change context events are now required to occur within the inclusive inter
 - Character trajectories expose both `local_target_character_id` and a `global_target_character_id` only when exactly one reviewed mapping exists; otherwise the target identity remains `UNRESOLVED` (the current schema enforces one mapping per local character, so `AMBIGUOUS` is not a reachable state).
 - `state_graph_issues()` reports overlapping conflicting validity intervals and transition forks/merges as warnings; these are diagnostics, not automatic psychological-state inference.
 - `scripts/character_arc_integrity.py` checks user-defined required milestones against state/change/event coverage in enabled clips only; it rejects unknown plan fields. It does not decide what constitutes character growth.
+
+
+### v4.3.1 verification status
+
+The dedicated patch branch is validated by GitHub Actions on Ubuntu and Windows: 175 tests passed on each OS; Python syntax checks and 12 Web JavaScript blocks/files passed; `build_release.py` produced and integrity-checked a 100-file `skill.zip`. Rendering uses FFmpeg's file-backed `-/filter_complex` option (FFmpeg 7.1+), which is compatible with the repository's FFmpeg 8.1 baseline and FFmpeg 9. The patch remains a PR until reviewed/merged.
