@@ -112,6 +112,39 @@ def validation_errors(data):
     return errors
 
 
+
+def state_graph_issues(data):
+    """Return conservative lifecycle/transition diagnostics; do not infer persistence."""
+    states = [s for s in data.get('character_states', []) if isinstance(s, dict)]
+    changes = [c for c in data.get('character_state_changes', []) if isinstance(c, dict)]
+    issues = []
+    groups = {}
+    for state in states:
+        key = (state.get('character_id'), state.get('dimension'), state.get('aspect'), state.get('target_character_id'))
+        groups.setdefault(key, []).append(state)
+    for key, rows in groups.items():
+        rows.sort(key=lambda x: (x.get('playback_time', -1), x.get('state_id', '')))
+        for i, left in enumerate(rows):
+            left_end = left.get('valid_until_sec')
+            for right in rows[i+1:]:
+                if left_end is None or not number(left_end):
+                    continue
+                if right.get('playback_time', float('inf')) < left_end and left.get('value') != right.get('value'):
+                    issues.append({'code':'OVERLAPPING_STATE_LIFECYCLES','state_ids':[left.get('state_id'),right.get('state_id')],'severity':'WARN','message':'不同状态的有效期重叠；需确认是否为并存、矛盾或失效时间设置错误'})
+    outgoing, incoming = {}, {}
+    for change in changes:
+        a, b = change.get('from_state_id'), change.get('to_state_id')
+        if not a or not b: continue
+        outgoing.setdefault(a, []).append(change.get('change_id'))
+        incoming.setdefault(b, []).append(change.get('change_id'))
+    for state_id, ids in outgoing.items():
+        if len(ids) > 1:
+            issues.append({'code':'STATE_TRANSITION_FORK','state_id':state_id,'change_ids':ids,'severity':'WARN','message':'同一状态存在多个后继变化；需人工确认是否为分支叙事或重复建模'})
+    for state_id, ids in incoming.items():
+        if len(ids) > 1:
+            issues.append({'code':'STATE_TRANSITION_MERGE','state_id':state_id,'change_ids':ids,'severity':'WARN','message':'多个变化汇入同一状态；需人工确认是否为重复或合流'})
+    return issues
+
 def context_snapshot(data, obj, collection):
     """Capture only dependencies, not the whole episode or subsequent revelations."""
     states = index(data, 'character_states', 'state_id')
