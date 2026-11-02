@@ -406,3 +406,8 @@ python scripts/serve_review.py --port 8765
 `character_state.py timeline` 按截止集数和集内秒数提供主角轨迹；`compile` 按完整状态变化组提取素材，保留变化两端，生成需要人工批准的新版本。沿用现有 dossier、SQLite episode_payloads、导演、版本与渲染流程，无需重做数据库。
 
 用法、字段、示例和能力边界见 [character-state-workflow.md](references/character-state-workflow.md)。主角身份、状态转变和成片审美仍需人工核实；不宣称自动读心或自动理解完整成长线。
+
+
+## v4.3.1 logic hardening (candidate)
+
+State-change context events are now required to occur within the inclusive interval from the source state timestamp to the destination state timestamp. This prevents an unrelated earlier/later event from being attached to a transition solely because it involves the same character. Existing v4.3 dossiers remain schema-compatible; records that fail the new semantic check must be corrected and re-reviewed.
