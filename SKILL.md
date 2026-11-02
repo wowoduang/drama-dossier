@@ -432,3 +432,8 @@ python scripts/shot_continuity.py qc work/shot-continuity.json work/shot-continu
 - 用 `timeline --character ... --as-of ... [--at-sec ...]` 检索。跨集身份沿用已有映射和观众可见性声明；不凭名字自动合并、不让旧状态跨集自动延续。
 - 用 `compile` 保守提取显式变化前后两端的素材，保留 state/change/event/evidence ID；不凭先后推断状态变化的因果，不为凑时长拆掉必要铺垫。没有合格状态素材时明确缺失。
 - 只把审核有效、非解释性的记录用于自动选材；新剪辑仍待审，继续使用版本批准及成片复核流程。状态记录是辅助理解，不代表自动读心或自动完成完整人物弧线。
+
+
+## v4.3.1 state-transition integrity
+
+For every `character_state_changes` record, each referenced context event must have a valid playback timestamp within the inclusive interval `from_state.playback_time <= event.playback_time <= to_state.playback_time`. The event must still satisfy the existing character participation, evidence, audience-availability and review checks. A temporal match is only contextual support; it does not establish causality. If an event falls outside the interval, correct the reference or retain the state records without asserting a transition, then re-review the change.
