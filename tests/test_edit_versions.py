@@ -87,7 +87,7 @@ class ContinuityReviewTests(unittest.TestCase):
         _, p = fixture()
         for c in p['candidates']: c['review_status'] = 'UNREVIEWED'; c['review_history'] = []
         js = "const api=require('./web/continuity-review.js');let p=JSON.parse(require('fs').readFileSync(0,'utf8'));for(const c of p.candidates)p=api.review(p,c.candidate_id,'PASS','连续原片已核实','browser-editor',true);process.stdout.write(JSON.stringify(p));"
-        cp = subprocess.run(['node', '-e', js], input=json.dumps(p), cwd=ROOT, text=True, capture_output=True, check=True)
+        cp = subprocess.run(['node', '-e', js], input=json.dumps(p), cwd=ROOT, text=True, encoding='utf-8', errors='replace', capture_output=True, check=True)
         result = json.loads(cp.stdout)
         self.assertTrue(approved_candidates(result)); self.assertTrue(qc(result)['release_ready'])
         for c in result['candidates']: self.assertEqual(review_errors(result, c), [])
@@ -124,10 +124,10 @@ class VersionTests(unittest.TestCase):
             root = Path(td); write_new(root/'p.json', p); write_new(root/'c.json', c)
             script = str(ROOT/'scripts/edit_versions.py')
             subprocess.run([sys.executable, script, 'ab', str(root/'p.json'), str(root/'c.json'), str(root/'ab')], check=True)
-            a = json.loads((root/'ab/a.json').read_text()); b = json.loads((root/'ab/b.json').read_text())
+            a = json.loads((root/'ab/a.json').read_text(encoding='utf-8')); b = json.loads((root/'ab/b.json').read_text(encoding='utf-8'))
             write_new(root/'choice.json', {'a_version_id': a['edit_version']['version_id'], 'b_version_id': b['edit_version']['version_id'], 'choose_b_clip_ids': ['C1']})
             subprocess.run([sys.executable, script, 'merge', str(root/'ab/a.json'), str(root/'ab/b.json'), str(root/'merge.json'), '--selection', str(root/'choice.json')], check=True)
-            merged = json.loads((root/'merge.json').read_text())
+            merged = json.loads((root/'merge.json').read_text(encoding='utf-8'))
             self.assertEqual(merged['clips'], b['clips'])
 
     def test_ab_keeps_original_and_requires_edit_review(self):
@@ -200,7 +200,7 @@ class VersionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td)/'v.json'; write_new(path, {'x': 1})
             with self.assertRaises(FileExistsError): write_new(path, {'x': 2})
-            self.assertEqual(json.loads(path.read_text()), {'x': 1})
+            self.assertEqual(json.loads(path.read_text(encoding='utf-8')), {'x': 1})
 
     def test_report_mapping_across_cut_boundary_and_disabled_clips(self):
         p, _ = fixture()
