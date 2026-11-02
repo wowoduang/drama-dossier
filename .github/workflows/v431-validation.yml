@@ -35,3 +35,9 @@ jobs:
         run: choco install ffmpeg --yes --no-progress
       - name: Build and run full validation
         run: python scripts/build_release.py
+      - name: Upload validated skill package
+        uses: actions/upload-artifact@v4
+        with:
+          name: drama-dossier-skill-${{ matrix.os }}
+          path: skill.zip
+          if-no-files-found: error
