@@ -9,6 +9,8 @@ BASES = {'OBSERVATION', 'EXPLICIT_STATEMENT', 'INTERPRETATION'}
 DIRECT = {'F1_DIRECT', 'F2_CORROBORATED'}
 INFERRED = {'I1_STRONG', 'I2_PLAUSIBLE', 'I3_SPECULATIVE', 'X_INTERPRETATION'}
 STATUSES = {'UNREVIEWED', 'PASS', 'INCORRECT', 'NEED_EVIDENCE', 'DISPUTED'}
+STATE_FIELDS = {'state_id','character_id','dimension','aspect','value','description','basis','certainty','quote','target_character_id','playback_time','audience_available_sec','valid_until_sec','event_ids','evidence_ids','knowledge_ids','review_status','editorial_priority'}
+CHANGE_FIELDS = {'change_id','character_id','from_state_id','to_state_id','playback_time','audience_available_sec','event_ids','evidence_ids','knowledge_ids','review_status','editorial_priority','link_type','reason'}
 
 
 def number(x):
@@ -37,6 +39,9 @@ def validation_errors(data):
                 errors.append(f'{collection} 记录必须为对象'); continue
             label = str(row.get(id_field, collection))
             def error(message): errors.append(f'{label}: {message}')
+            allowed_fields = STATE_FIELDS if collection == 'character_states' else CHANGE_FIELDS
+            unknown_fields = set(row) - allowed_fields
+            if unknown_fields: error('未知字段: ' + ', '.join(sorted(str(x) for x in unknown_fields)))
             if row.get('character_id') not in chars: error('character_id 人物不存在')
             if row.get('review_status', 'UNREVIEWED') not in STATUSES: error('审核状态无效')
             t, available = row.get('playback_time'), row.get('audience_available_sec')
