@@ -434,6 +434,6 @@ The dedicated patch branch is validated by GitHub Actions on Ubuntu and Windows:
 ## v4.3.1 audit follow-up fixes (CI validated)
 
 - State graph conflicts involving unreviewed/draft records remain visible as non-blocking diagnostics and no longer exclude independently approved state-change material. Conflicts whose referenced states and changes are all approved remain blocking.
-- Repeated visibility declarations are monotonic: a later episode declaration is audited but does not replace an earlier effective episode. Moving the effective visibility earlier requires the explicit `--correct` option and an audit entry.
+- Repeated visibility declarations are monotonic: a later episode declaration is audited but does not replace an earlier effective episode. Changing an already approved visibility episode earlier or later requires the explicit `--correct` option and an audit entry.
 - Tests use explicit UTF-8 for file IO and captured subprocess text instead of relying on Windows locale defaults.
 - The pull-request validation workflow rebuilds and commits `skill.zip` from current source; the canonical Ubuntu PR job verifies package/source consistency. Windows CI also runs the full release build with Python UTF-8 mode disabled.
