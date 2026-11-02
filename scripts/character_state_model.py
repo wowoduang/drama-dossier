@@ -101,6 +101,12 @@ def validation_errors(data):
                 if left.get('value') == right.get('value'): error('前后状态值相同，不构成状态变化')
                 if row.get('link_type', 'CONTEXT') != 'CONTEXT': error('状态关联事件只表达 CONTEXT，不凭时间先后断言因果')
                 if not refs.get('event_ids'): error('变化需要关联事件 event_ids')
+                # A context event must belong to the transition interval; mere participation elsewhere in the episode is insufficient.
+                if number(left.get('playback_time')) and number(right.get('playback_time')):
+                    for event_id in refs.get('event_ids', []):
+                        event_time = events[event_id].get('playback_time')
+                        if not number(event_time) or event_time < left['playback_time'] or event_time > right['playback_time']:
+                            error(f'关联事件 {event_id} 必须位于前后状态时点之间')
                 if not isinstance(row.get('reason'), str) or not row['reason'].strip(): error('变化需要 reason')
                 if number(available) and any(number(s.get('audience_available_sec')) and s['audience_available_sec'] > available for s in (left, right)): error('变化不能早于前后状态的可见时间')
     return errors
