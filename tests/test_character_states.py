@@ -146,6 +146,20 @@ class StateModelTests(unittest.TestCase):
         self.assertTrue(usable(d,d['character_state_changes'][0],'character_state_changes'))
 
 
+    def test_state_graph_fork_issue_exposes_state_ids_for_compiler(self):
+        from character_state_model import state_graph_issues
+        d=fixture()
+        s3={**d['character_states'][1],'state_id':'S3','value':'离开','playback_time':41,'audience_available_sec':42,'quote':'我要亲自查清楚','event_ids':['E2'],'evidence_ids':['V2']}
+        d['character_states'].append(s3)
+        c2={**d['character_state_changes'][0],'change_id':'CH2','to_state_id':'S3','playback_time':41,'audience_available_sec':42,'event_ids':['E2']}
+        d['character_state_changes'].append(c2)
+        issues=state_graph_issues(d)
+        fork=next(x for x in issues if x['code']=='STATE_TRANSITION_FORK')
+        self.assertIn('state_ids',fork)
+        self.assertEqual(fork['state_ids'],['S1'])
+
+
+
 class StateSeriesTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name);self.db=self.root/'series.sqlite'
