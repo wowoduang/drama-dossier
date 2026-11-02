@@ -141,3 +141,12 @@
 
 - Fix arc integrity coverage to ignore disabled clips and reject unknown plan fields; reject unknown character-state fields in Python validation and JSON Schema.
 - Add regression tests for review downgrade, enabled/disabled arc coverage, unknown fields, unresolved target mappings and Windows-safe FFmpeg temp-file lifecycle.
+
+
+## v4.3.1 validation update
+
+- Fix Windows review-cut temporary filter file lifecycle and UTF-8-safe FFmpeg stderr decoding.
+- Switch single-episode and cross-episode renderers to FFmpeg 7.1+ `-/filter_complex`, addressing FFmpeg 9 removal of `-filter_complex_script` while retaining compatibility with FFmpeg 8.1.
+- Correct the cross-character test fixture so each transition timestamp equals its destination state timestamp.
+- CI result: 175 tests passed on Windows and 175 passed on Ubuntu; Python syntax checks and 12 Web JavaScript blocks/files passed on both; each build produced and verified a 100-file `skill.zip`.
+- B8/B9 remain unassessed because their detailed repro steps were not included in the uploaded WorkBuddy handoff summary; do not infer their fixes.
