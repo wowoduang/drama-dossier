@@ -10,7 +10,7 @@ from copy import deepcopy
 import json
 from pathlib import Path
 
-from character_state_model import COLLECTIONS, DIMENSIONS, number, usable, index
+from character_state_model import COLLECTIONS, DIMENSIONS, number, usable, index, state_graph_issues
 from dossier_v3 import load, migrate_to_v35, validate, add_review
 from edit_versions import version, write_new
 from series_memory import connect
@@ -73,6 +73,9 @@ def trajectory(connection, series_id, character_id, as_of, at_sec=None, dimensio
         errors = validate(data)
         if errors: raise ValueError(f'{ep} 状态档案校验失败: ' + '; '.join(errors))
         payloads[ep] = data
+        graph_issues = state_graph_issues(data)
+        for issue in graph_issues:
+            conflicts.append({'episode_id': ep, **issue})
         bound = at_sec if at_sec is not None and ep == cutoff_ep else float('inf')
         states = [s for s in data.get('character_states', []) if s['character_id'] == local and (dimension is None or s['dimension'] == dimension) and s['playback_time'] <= bound and s['audience_available_sec'] <= bound and usable(data, s)]
         def qualified(obj):
