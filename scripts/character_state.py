@@ -125,11 +125,33 @@ def compile_state_cut(db, sid, gid, as_of, sources_path, target_sec=180, at_sec=
     sources = load_sources(sources_path)
     states = {(s['episode_id'], s['state_id']): s for s in context['states']}
     blocked = set()
+    non_blocking_conflicts = []
+    approved_state_keys = set(states)
+    approved_change_keys = {(c['episode_id'], c['change_id']) for c in context['changes']}
     for issue in context['conflicts']:
         state_ids = issue.get('state_ids')
         if not isinstance(state_ids, list) or not state_ids:
             raise ValueError(f"状态诊断 {issue.get('code', 'UNKNOWN')} 缺少有效 state_ids，不能安全编译")
-        blocked.update((issue['episode_id'], state_id) for state_id in state_ids)
+        if not isinstance(issue.get('episode_id'), str) or not issue['episode_id']:
+            raise ValueError(f"状态诊断 {issue.get('code', 'UNKNOWN')} 缺少有效 episode_id，不能安全编译")
+        involved_states = {(issue['episode_id'], state_id) for state_id in state_ids}
+        change_ids = issue.get('change_ids', [])
+        if not isinstance(change_ids, list):
+            raise ValueError(f"状态诊断 {issue.get('code', 'UNKNOWN')} 的 change_ids 格式无效")
+        involved_changes = {(issue['episode_id'], change_id) for change_id in change_ids}
+        # Draft/unreviewed records remain visible as diagnostics but cannot
+        # block independently reviewed material from being compiled.
+        is_approved_conflict = involved_states.issubset(approved_state_keys) and involved_changes.issubset(approved_change_keys)
+        if is_approved_conflict:
+            blocked.update(involved_states)
+        else:
+            non_blocking_conflicts.append({
+                'code': issue.get('code', 'UNKNOWN'),
+                'episode_id': issue['episode_id'],
+                'state_ids': state_ids,
+                'change_ids': change_ids,
+                'reason': '冲突包含未通过审核或未进入可用轨迹的草稿记录；仅作提示，不阻断已审核素材'
+            })
     units, covered, excluded = [], set(), []
     for change in context['changes']:
         keys = [(change['episode_id'], change[k]) for k in ('from_state_id', 'to_state_id')]
@@ -191,7 +213,7 @@ def compile_state_cut(db, sid, gid, as_of, sources_path, target_sec=180, at_sec=
         'series_id': sid, 'selector': {'type': 'character_state', 'id': gid, 'dimension': dimension}, 'title': '人物状态与变化素材候选',
         'sources': {ep: sources[ep] for ep in {c['episode_id'] for c in clips}}, 'clips': clips, 'target_duration_sec': target_sec,
         'estimated_duration_sec': sum(c['end_sec']-c['start_sec'] for c in clips), 'spoiler_guard': context['spoiler_guard'],
-        'character_state_context': selected_context, 'compile_report': {'excluded': excluded, 'skipped_groups': skipped, 'review_status': 'UNREVIEWED', 'warnings': ['素材候选不保证完整成长弧线或最佳审美；需人工补齐连接和反应', '优先级来自审核记录，不由音量或表情自动推断']}}
+        'character_state_context': selected_context, 'compile_report': {'excluded': excluded, 'skipped_groups': skipped, 'non_blocking_conflicts': non_blocking_conflicts, 'review_status': 'UNREVIEWED', 'warnings': ['素材候选不保证完整成长弧线或最佳审美；需人工补齐连接和反应', '优先级来自审核记录，不由音量或表情自动推断', '未审核草稿冲突仅作提示，不阻断已审核素材']}}
     return version(project, 'Character-state story candidate')
 
 
