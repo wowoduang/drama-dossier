@@ -159,7 +159,7 @@
 ## v4.3.1 audit follow-up (CI validated)
 
 - N1: unreviewed/draft lifecycle conflicts remain visible in diagnostics but no longer block independently approved state-change material; approved conflicts remain blocking and malformed diagnostic contracts fail closed.
-- N2: visibility declarations are monotonic; later declarations are audited without replacing an earlier effective episode. Moving visibility earlier requires explicit `--correct` and is audited.
+- N2: visibility declarations are monotonic; later declarations are audited without replacing an earlier effective episode. Moving an approved visibility episode earlier or later requires explicit `--correct` and is audited.
 - N3: test file IO and captured subprocess text now specify UTF-8 explicitly to avoid locale-dependent failures.
 - N4: PR validation rebuilds and commits the generated `skill.zip`; the canonical Ubuntu PR job checks package/source consistency.
 - N5: schema scope is explicitly documented as candidate payload only; complete dossiers use the Python dossier validator.
