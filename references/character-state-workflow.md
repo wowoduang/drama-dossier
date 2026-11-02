@@ -28,9 +28,17 @@
 
 “握拳、停顿、说出‘我要查清楚’”可记为观察或明确陈述；“绝望、决心复仇”需要相应依据，解释性判断必须保留 INTERPRETATION。本版保留审核过的解释记录，但不将其用于自动素材筛选。语言校验不能证明说话人或动机正确，仍须回看连续原片。
 
-变化记录引用同人物、维度、aspect、关系对象的 from_state_id/to_state_id；后者时点必须更晚且值不同。变化时间等于后状态时间。event_ids 表示关联上下文，link_type 只允许 CONTEXT，**不把先后出现当作事件导致心理变化的证明**。跨集轨迹按各集记录排列；本版不自动建立跨集状态因果边。
+变化记录引用同人物、维度、aspect、关系对象的 from_state_id/to_state_id；后者时点必须更晚且值不同。变化时间等于后状态时间。event_ids 表示关联上下文，link_type 只允许 CONTEXT，**不把先后出现当作事件导致心理变化的证明**。跨集轨迹按各集记录排列；本版不自动建立跨集状态因果边。每个分集人物在现有 `character_mentions` 主键约束下只对应一个全局人物 ID；映射未审核时输出 `UNRESOLVED`，不使用不可达的 `AMBIGUOUS` 状态。
 
 JSON 结构见 `references/character-state.schema.json`。跨引用、时序、证据归属与审核有效性以 Python 校验为准。
+
+## 人物成长弧完整性检查
+
+`character_arc_integrity.py` 只按用户明确列出的里程碑检查剪辑覆盖，并且只统计 `enabled` 不为 `false` 的片段。计划字段采用显式 allowlist，未知字段会报错，避免拼写错误被静默忽略。
+
+```bash
+python scripts/character_arc_integrity.py work/state-cut.json work/arc-plan.json work/arc-integrity.json
+```
 
 ## 1. 导入候选
 
