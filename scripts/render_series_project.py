@@ -77,6 +77,10 @@ def build_command(project,output,crf=20,preset='medium',width=1920,height=1080,f
     return cmd,filter_text
 
 def main():
+    # Keep Chinese CLI messages printable on legacy Windows code pages.
+    for stream in (sys.stdout,sys.stderr):
+        try:stream.reconfigure(errors='backslashreplace')
+        except (AttributeError,OSError):pass
     p=argparse.ArgumentParser(description='跨集多源剪辑项目 MP4 渲染器')
     p.add_argument('project');p.add_argument('output');p.add_argument('--crf',type=int,default=20);p.add_argument('--preset',default='medium');p.add_argument('--width',type=int,default=1920);p.add_argument('--height',type=int,default=1080);p.add_argument('--fps',type=int,default=30);p.add_argument('--dry-run',action='store_true')
     a=p.parse_args()
