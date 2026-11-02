@@ -120,3 +120,12 @@
 - Add regression tests for events before, after, and exactly at the transition endpoint.
 - No dossier schema or SQLite migration; existing records remain readable, but invalid transition links must be corrected and re-reviewed.
 - Full repository test/build validation is pending; this patch is published on a dedicated branch for review, not merged to main.
+
+
+## v4.3.1 (patch candidate)
+
+- Require state-change context events to fall within the inclusive source-to-destination state time interval.
+- Add local/global target-character mapping fields to trajectory records; unresolved and ambiguous mappings are explicit.
+- Add diagnostics for overlapping conflicting state validity intervals and transition graph forks/merges.
+- Add a user-defined character-arc milestone coverage checker; no automatic claim of semantic growth.
+- Added regression coverage for event timing and state graph diagnostics. Full repository validation remains pending.
