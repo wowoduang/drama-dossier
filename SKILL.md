@@ -437,3 +437,11 @@ python scripts/shot_continuity.py qc work/shot-continuity.json work/shot-continu
 ## v4.3.1 state-transition integrity
 
 For every `character_state_changes` record, each referenced context event must have a valid playback timestamp within the inclusive interval `from_state.playback_time <= event.playback_time <= to_state.playback_time`. The event must still satisfy the existing character participation, evidence, audience-availability and review checks. A temporal match is only contextual support; it does not establish causality. If an event falls outside the interval, correct the reference or retain the state records without asserting a transition, then re-review the change.
+
+
+## v4.3.1 人物状态逻辑加固
+
+- 状态变化引用的每个上下文事件必须位于 `from_state.playback_time <= event.playback_time <= to_state.playback_time` 的闭区间内；这只是时间上下文，不证明因果。
+- 关系状态轨迹同时输出 `local_target_character_id` 与审核映射唯一时的 `global_target_character_id`。未映射/多重映射分别标记 `UNRESOLVED` / `AMBIGUOUS`，不得猜测。
+- `state_graph_issues()` 诊断状态有效期重叠、变化分叉和合流；警告需要人工判断，不把时点状态推断成持续心理。
+- 用 `scripts/character_arc_integrity.py PROJECT ARC_PLAN OUTPUT` 核对用户指定的成长里程碑是否有状态、变化和事件素材覆盖。该工具只验证清单覆盖，不自动评价人物是否真正成长。
