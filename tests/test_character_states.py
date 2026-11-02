@@ -44,6 +44,11 @@ class StateModelTests(unittest.TestCase):
         self.assertEqual(validate(d),[])
         self.assertEqual(migrate_to_v35(d)['character_states'],[])
 
+    def test_unknown_character_state_field_is_rejected(self):
+        d=fixture()
+        d['character_states'][0]['playback_tim'] = 11
+        self.assertTrue(any('未知字段' in err and 'playback_tim' in err for err in validate(d)))
+
     def test_records_validate_and_have_review_context(self):
         d=reviewed(fixture());self.assertEqual(validate(d),[])
         self.assertTrue(all(usable(d,s) for s in d['character_states']))
@@ -61,6 +66,17 @@ class StateModelTests(unittest.TestCase):
         self.assertEqual(d,before)
         payload['episode_id']='OTHER'
         with self.assertRaises(ValueError):import_candidates(d,payload)
+
+    def test_downgrading_pass_invalidates_state_and_dependent_change(self):
+        d=reviewed(fixture())
+        self.assertTrue(usable(d,d['character_states'][0]))
+        self.assertTrue(usable(d,d['character_state_changes'][0],'character_state_changes'))
+        downgraded=reviewed_dossier(d,'S1','NEED_EVIDENCE','台词上下文仍需复核','editor',source_checked=True)
+        state=next(x for x in downgraded['character_states'] if x['state_id']=='S1')
+        change=downgraded['character_state_changes'][0]
+        self.assertFalse(usable(downgraded,state))
+        self.assertFalse(usable(downgraded,change,'character_state_changes'))
+        self.assertEqual(downgraded['review_history'][-1]['status'],'NEED_EVIDENCE')
 
     def test_state_pass_requires_reviewer_and_source_check(self):
         d=fixture();before=copy.deepcopy(d)
