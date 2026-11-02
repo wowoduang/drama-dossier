@@ -63,6 +63,17 @@ class SeriesVisibilityTests(unittest.TestCase):
         finally:c.close()
         self.assertEqual(action,'CORRECT_VISIBLE_EARLIER')
 
+    def test_moving_visibility_later_requires_explicit_correction(self):
+        declare_visible(self.db,'S1','character',self.gid,'EP001',['EP001:EVD1'],'最初声明第1集已知','tester')
+        with self.assertRaisesRegex(ValueError,'必须显式使用 --correct'):
+            declare_visible(self.db,'S1','character',self.gid,'EP002',['EP001:EVD1'],'纠正为第2集才已知','tester')
+        corrected=declare_visible(self.db,'S1','character',self.gid,'EP002',['EP001:EVD1'],'经复核纠正为第2集才已知','tester',correct=True)
+        self.assertEqual(corrected['effective_episode_number'],2)
+        c=connect(self.db)
+        try:action=c.execute('SELECT action FROM visibility_audit WHERE series_id=? AND entity_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1',( 'S1',self.gid)).fetchone()[0]
+        finally:c.close()
+        self.assertEqual(action,'CORRECT_VISIBLE_LATER')
+
     def test_visibility_cannot_use_future_episode_evidence(self):
         with self.assertRaisesRegex(ValueError,'不能晚于声明集数'):
             declare_visible(self.db,'S1','character',self.gid,'EP001',['EP002:EVD9'],'未来证据不能证明第1集已知')
