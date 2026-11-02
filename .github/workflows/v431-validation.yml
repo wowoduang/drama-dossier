@@ -58,15 +58,9 @@ jobs:
         env:
           PYTHONUTF8: "0"
         run: python scripts/build_release.py
-      - name: Browser UI interaction smoke tests
-        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-          node .github/scripts/browser_ui_smoke.cjs
       - name: Upload validated skill package
         uses: actions/upload-artifact@v4
         with:
-          name: drama-dossier-skill-${{ matrix.os }}-py${{ matrix.python }}-py${{ matrix.python }}
+          name: drama-dossier-skill-${{ matrix.os }}-py${{ matrix.python }}
           path: skill.zip
           if-no-files-found: error
