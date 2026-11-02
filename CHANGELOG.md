@@ -150,3 +150,6 @@
 - Correct the cross-character test fixture so each transition timestamp equals its destination state timestamp.
 - CI result: 175 tests passed on Windows and 175 passed on Ubuntu; Python syntax checks and 12 Web JavaScript blocks/files passed on both; each build produced and verified a 100-file `skill.zip`.
 - B8/B9 remain unassessed because their detailed repro steps were not included in the uploaded WorkBuddy handoff summary; do not infer their fixes.
+
+
+- Clarify N5: the character-state JSON Schema validates candidate import payloads only; the complete dossier example is validated by the Python dossier validator. Schema description, README, SKILL and workflow documentation now state this mapping explicitly.
