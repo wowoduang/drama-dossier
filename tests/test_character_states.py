@@ -179,6 +179,23 @@ class StateSeriesTests(unittest.TestCase):
         save_atomic(d,self.path);import_dossier(self.db,'SER',self.path,replace=True)
         declare_visible(self.db,'SER','character',self.gid,'EP001',['EP001:V1'],'current identity evidence','editor')
 
+    def test_trajectory_state_graph_diagnostics_are_scoped_to_requested_character(self):
+        d=copy.deepcopy(self.d)
+        b1={**d['character_states'][0],'state_id':'B1','character_id':'B','value':'保护同伴'}
+        b2={**d['character_states'][1],'state_id':'B2','character_id':'B','value':'离开同伴','playback_time':31,'audience_available_sec':32}
+        b3={**d['character_states'][1],'state_id':'B3','character_id':'B','value':'寻找同伴','playback_time':41,'audience_available_sec':42}
+        d['character_states'].extend([b1,b2,b3])
+        cb1={**d['character_state_changes'][0],'change_id':'BC1','character_id':'B','from_state_id':'B1','to_state_id':'B2'}
+        cb2={**cb1,'change_id':'BC2','to_state_id':'B3','playback_time':42,'audience_available_sec':43}
+        d['character_state_changes'].extend([cb1,cb2])
+        d['review_history']=[]
+        for collection,field in [('character_states','state_id'),('character_state_changes','change_id')]:
+            for row in d[collection]:
+                add_review(d,row[field],'PASS','审核状态与证据',reviewer='editor',source_checked=True)
+        self.replace(d)
+        result=self.timeline()
+        self.assertFalse(any(x.get('code')=='STATE_TRANSITION_FORK' for x in result['conflicts']))
+
     def test_cutoff_time_excludes_future_state_and_change(self):
         result=self.timeline(at_sec=20)
         self.assertEqual([s['state_id'] for s in result['states']],['S1']);self.assertEqual(result['changes'],[])
