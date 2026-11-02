@@ -148,3 +148,18 @@ v4.3.1 修复分支的完整构建结果：Windows 175 项测试通过，Ubuntu 
 ## Schema 适用范围
 
 `references/character-state.schema.json` 是候选导入载荷 Schema，不是完整 episode dossier Schema。`character-state-candidates.example.json` 对应该 Schema；`character-state-base.example.json` 是完整 dossier，应由 `scripts/dossier_v3.py` 的 Python 校验器校验。不要把完整 dossier 直接送入候选载荷 Schema 并将预期失败误报为档案无效。
+
+
+## 可见性声明重复与纠正
+
+同一实体已经存在可见性声明时，较晚集数的重复声明只记录审计，不覆盖更早的有效集数。若要将生效集数改早（这会扩大可见范围），必须显式确认并使用 `--correct`：
+
+```bash
+python scripts/series_visibility.py work/series.sqlite --series-id SERIES01 --entity-type character --entity-id GLOBAL_CHAR01 --known-by-episode EP010 --evidence-ref EP010:EVD001 --reason "复核后确认第10集已揭晓" --reviewer editor --correct
+```
+
+该纠正会写入 `CORRECT_VISIBLE_EARLIER` 审计动作。未提供 `--correct` 时拒绝提前可见性声明。
+
+## 状态图冲突与草稿
+
+涉及未审核草稿的状态图冲突会保留在诊断中，但不应自动阻断其他已通过审核的状态变化素材。只有冲突涉及的状态和变化均已进入可用审核轨迹时，才作为编译阻断项。
