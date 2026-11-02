@@ -52,6 +52,16 @@ jobs:
             git push origin HEAD:refs/heads/fix/v4.3.1-state-logic
             gh workflow run v431-validation.yml --ref fix/v4.3.1-state-logic
           fi
+      - name: Verify committed package matches source
+        if: github.event_name == 'workflow_dispatch'
+        run: git diff --exit-code -- skill.zip
+      - name: Windows default-encoding regression
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          PYTHONUTF8: "0"
+          PYTHONIOENCODING: ""
+        run: python -m unittest discover -s tests -v
       - name: Upload validated skill package
         uses: actions/upload-artifact@v4
         with:
