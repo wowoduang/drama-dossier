@@ -74,7 +74,7 @@ def render_review(project, directory, width=1920, height=1080, fps=30):
             subprocess.run(render_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         except subprocess.CalledProcessError as exc:
             detail = (exc.stderr or exc.stdout or str(exc))[-4000:]
-            raise RuntimeError(f"FFmpeg 渲染失败（退出码 {exc.returncode}）：\\n{detail}") from exc
+            raise ValueError(f"FFmpeg 渲染失败（退出码 {exc.returncode}）：\\n{detail}") from exc
     finally:
         if script_path:
             Path(script_path).unlink(missing_ok=True)
