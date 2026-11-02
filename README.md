@@ -416,6 +416,6 @@ State-change context events are now required to occur within the inclusive inter
 ## v4.3.1 state integrity additions
 
 - State-change context events must fall within the inclusive interval between the source and destination state timestamps.
-- Character trajectories expose both `local_target_character_id` and a `global_target_character_id` only when exactly one reviewed mapping exists; otherwise the target identity remains unresolved/ambiguous.
+- Character trajectories expose both `local_target_character_id` and a `global_target_character_id` only when exactly one reviewed mapping exists; otherwise the target identity remains `UNRESOLVED` (the current schema enforces one mapping per local character, so `AMBIGUOUS` is not a reachable state).
 - `state_graph_issues()` reports overlapping conflicting validity intervals and transition forks/merges as warnings; these are diagnostics, not automatic psychological-state inference.
-- `scripts/character_arc_integrity.py` checks user-defined required milestones against state/change/event coverage in a compiled project. It does not decide what constitutes character growth.
+- `scripts/character_arc_integrity.py` checks user-defined required milestones against state/change/event coverage in enabled clips only; it rejects unknown plan fields. It does not decide what constitutes character growth.
