@@ -43,4 +43,24 @@ class MultiRenderTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'超出源视频时长'):
                 build_command(project,root/'bad.mp4',width=320,height=240,fps=25)
 
+
+class CliEncodingTests(unittest.TestCase):
+    def test_renderer_cli_error_is_safe_without_python_utf8_mode(self):
+        import os
+        with tempfile.TemporaryDirectory() as td:
+            missing=Path(td)/'不存在的项目.json'
+            output=Path(td)/'输出.mp4'
+            env=os.environ.copy()
+            env['PYTHONUTF8']='0'
+            env.pop('PYTHONIOENCODING',None)
+            result=subprocess.run(
+                [sys.executable,str(ROOT/'scripts'/'render_series_project.py'),str(missing),str(output)],
+                capture_output=True,text=True,encoding='utf-8',errors='replace',env=env
+            )
+            self.assertNotEqual(result.returncode,0)
+            self.assertTrue(result.stderr)
+            self.assertNotIn('UnicodeEncodeError',result.stderr)
+            self.assertNotIn('charmap codec can\'t encode',result.stderr)
+
+
 if __name__=='__main__':unittest.main()
