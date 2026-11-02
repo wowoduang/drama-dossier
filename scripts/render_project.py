@@ -77,7 +77,7 @@ def build_command(project: dict[str, Any], video: str | Path, output: str | Path
             raise ValueError('审核版本的原片与 --video 不匹配；多源项目请用跨集渲染器')
     audio = has_audio(video)
     filter_text = build_filter(clips, audio)
-    cmd = [ffmpeg, "-hide_banner", "-y", "-i", str(video), "-filter_complex_script", "FILTER_FILE", "-map", "[outv]"]
+    cmd = [ffmpeg, "-hide_banner", "-y", "-i", str(video), "-/filter_complex", "FILTER_FILE", "-map", "[outv]"]
     if audio:
         cmd += ["-map", "[outa]", "-c:a", "aac", "-b:a", "192k"]
     cmd += ["-c:v", "libx264", "-preset", preset, "-crf", str(crf), "-movflags", "+faststart", str(output)]
