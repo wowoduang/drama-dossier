@@ -155,7 +155,7 @@ class StateModelTests(unittest.TestCase):
     def test_browser_dossier_review_export_is_consumable(self):
         d=fixture()
         js="const a=require('./web/character-state-review.js');let d=JSON.parse(require('fs').readFileSync(0,'utf8'));for(const [c,f] of [['character_states','state_id'],['character_state_changes','change_id']])for(const o of d[c])d=a.review(d,c,o[f],'PASS','reviewed source','web-editor',true);process.stdout.write(JSON.stringify(d));"
-        result=subprocess.run(['node','-e',js],input=json.dumps(d),cwd=ROOT,text=True,capture_output=True,check=True)
+        result=subprocess.run(['node','-e',js],input=json.dumps(d),cwd=ROOT,text=True,encoding='utf-8',errors='replace',capture_output=True,check=True)
         d=json.loads(result.stdout)
         self.assertEqual(validate(d),[])
         self.assertTrue(all(usable(d,s) for s in d['character_states']))
@@ -185,7 +185,7 @@ class StateSeriesTests(unittest.TestCase):
         try:self.gid=c.execute("SELECT global_character_id FROM character_mentions WHERE series_id='SER' AND episode_id='EP001' AND local_character_id='A'").fetchone()[0]
         finally:c.close()
         declare_visible(self.db,'SER','character',self.gid,'EP001',['EP001:V1'],'early public identity','editor')
-        video=self.root/'video.mp4';video.write_bytes(b'placeholder');self.sources=self.root/'sources.json';self.sources.write_text(json.dumps({'EP001':str(video)}))
+        video=self.root/'video.mp4';video.write_bytes(b'placeholder');self.sources=self.root/'sources.json';self.sources.write_text(json.dumps({'EP001':str(video)}),encoding='utf-8')
     def tearDown(self):self.tmp.cleanup()
     def timeline(self,as_of='1',at_sec=None):
         c=connect(self.db)
@@ -366,7 +366,7 @@ class StateSeriesTests(unittest.TestCase):
         from story_arc_compiler import make_prompt
         output=self.root/'prompt.txt'
         make_prompt(self.db,'SER','character',self.gid,'整理主角目标变化',output,max_episode_number=1)
-        text=output.read_text()
+        text=output.read_text(encoding='utf-8')
         self.assertIn('character_state_context',text)
         self.assertIn('信任同伴并等待',text)
         self.assertIn('不把 CONTEXT 事件关联写成因果',text)
@@ -376,7 +376,7 @@ class StateSeriesTests(unittest.TestCase):
         from review_cut import render_review
         video=self.root/'real.mp4'
         subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=blue:s=160x120:d=100:r=12','-an','-c:v','libx264','-pix_fmt','yuv420p',str(video)],check=True)
-        self.sources.write_text(json.dumps({'EP001':str(video)}))
+        self.sources.write_text(json.dumps({'EP001':str(video)}),encoding='utf-8')
         project=compile_state_cut(self.db,'SER',self.gid,'1',self.sources,target_sec=20,at_sec=40)
         project=approve(project,'editor','核对状态两端和台词上下文')
         result=render_review(project,self.root/'rendered',width=160,height=120,fps=12)
@@ -388,7 +388,7 @@ class StateSeriesTests(unittest.TestCase):
     def test_cli_review_and_timeline_output(self):
         script=str(ROOT/'scripts/character_state.py');out=self.root/'timeline.json'
         subprocess.run([sys.executable,script,'timeline',str(self.db),str(out),'--series-id','SER','--character',self.gid,'--as-of','1','--at-sec','20'],check=True,capture_output=True)
-        self.assertEqual(len(json.loads(out.read_text())['states']),1)
+        self.assertEqual(len(json.loads(out.read_text(encoding='utf-8'))['states']),1)
         result=subprocess.run([sys.executable,script,'timeline',str(self.db),str(out),'--series-id','SER','--character',self.gid,'--as-of','1'],capture_output=True)
         self.assertNotEqual(result.returncode,0)
 
