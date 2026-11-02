@@ -337,6 +337,18 @@ class StateSeriesTests(unittest.TestCase):
         d=copy.deepcopy(self.d);d['character_states'][1]['valid_until_sec']=35;d['review_history']=[];self.replace(reviewed(d))
         self.assertEqual(self.timeline(at_sec=40)['latest_in_cutoff_episode'],[])
 
+    def test_unreviewed_overlapping_draft_does_not_block_approved_change(self):
+        d=fixture()
+        d['character_states'][0]['valid_until_sec']=25
+        d=reviewed(d)
+        draft={**d['character_states'][0],'state_id':'S1X','value':'开始怀疑同伴','description':'未审核草稿状态','playback_time':20,'audience_available_sec':21,'valid_until_sec':24,'event_ids':['E1'],'review_status':'UNREVIEWED'}
+        d['character_states'].append(draft)
+        self.replace(d)
+        result=compile_state_cut(self.db,'SER',self.gid,'1',self.sources,target_sec=100)
+        self.assertTrue(result['clips'])
+        conflicts=result['compile_report']['non_blocking_conflicts']
+        self.assertTrue(any('S1X' in x['state_ids'] for x in conflicts))
+
     def test_conflicts_block_automatic_change_selection(self):
         d=copy.deepcopy(self.d);s={**d['character_states'][0],'state_id':'S1_ALT','value':'另一个冲突目标'};d['character_states'].append(s);d['review_history']=[];self.replace(reviewed(d))
         self.assertTrue(self.timeline()['conflicts'])
