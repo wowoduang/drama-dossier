@@ -196,6 +196,21 @@ class StateSeriesTests(unittest.TestCase):
         result=self.timeline()
         self.assertFalse(any(x.get('code')=='STATE_TRANSITION_FORK' for x in result['conflicts']))
 
+    def test_fork_diagnostic_does_not_crash_state_cut_compiler(self):
+        d=copy.deepcopy(self.d)
+        s3={**d['character_states'][1],'state_id':'S3','value':'离开同伴','playback_time':41,'audience_available_sec':42}
+        d['character_states'].append(s3)
+        add_review(d,'S3','PASS','核对状态证据',reviewer='editor',source_checked=True)
+        c2={**d['character_state_changes'][0],'change_id':'CH2','to_state_id':'S3','playback_time':41,'audience_available_sec':42}
+        d['character_state_changes'].append(c2)
+        add_review(d,'CH2','PASS','核对变化上下文',reviewer='editor',source_checked=True)
+        self.replace(d)
+        result=self.timeline()
+        fork=next(x for x in result['conflicts'] if x.get('code')=='STATE_TRANSITION_FORK')
+        self.assertEqual(fork['state_ids'],['S1'])
+        with self.assertRaisesRegex(ValueError,'没有完整'):
+            compile_state_cut(self.db,'SER',self.gid,'1',self.sources)
+
     def test_cutoff_time_excludes_future_state_and_change(self):
         result=self.timeline(at_sec=20)
         self.assertEqual([s['state_id'] for s in result['states']],['S1']);self.assertEqual(result['changes'],[])
