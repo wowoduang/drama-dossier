@@ -112,3 +112,20 @@ python scripts/review_cut.py work/hero-approved.json output/hero-cut-001
 ## 能力边界
 
 本版新增的是证据化状态记录、审核、时点检索和保守素材编译，没有新增人脸识别、情绪识别、自动读心或全自动人物成长分析。知识仍由原 knowledge_states 管理，状态层引用其 ID，不覆写原认知事实。完整视频理解、人物动机、状态转变语义和成片审美依然需要 ChatGPT 结合连续素材及人工审核。
+
+
+## v4.3.1 逻辑校验补充
+
+状态变化的 `event_ids` 必须指向前后状态时间之间的事件（包含两个端点）。事件时间符合区间只是上下文一致性，不证明事件导致状态变化。
+
+跨集关系状态输出同时保留分集 `local_target_character_id`，并在当前集该人物映射到唯一且审核通过的全局人物时输出 `global_target_character_id`。没有唯一审核映射时不进行合并。
+
+状态图诊断会报告不同状态有效期重叠、同一状态多个后继（fork）或多个前驱汇入（merge）。这些是待审核警告；状态可能并存，不能仅凭重叠认定数据错误。
+
+人物成长弧完整性使用用户明确提供的里程碑清单，例如 `milestones[]` 中列出 `episode_id`、`required_state_ids` 和 `required_change_ids`。运行：
+
+```bash
+python scripts/character_arc_integrity.py work/state-cut.json work/arc-plan.json work/arc-integrity.json
+```
+
+该检查只核对指定里程碑及其事件素材是否进入剪辑工程，不替代人工判断成长意义、因果和叙事质量。
