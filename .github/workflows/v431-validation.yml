@@ -50,7 +50,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
         run: |
           npm install --no-save --no-package-lock playwright@1.55.0
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
           node .github/scripts/browser_ui_smoke.cjs
       - name: Windows default-encoding regression (tests and release build)
         if: runner.os == 'Windows' && matrix.python == '3.12'
