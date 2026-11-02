@@ -424,3 +424,8 @@ State-change context events are now required to occur within the inclusive inter
 ### v4.3.1 verification status
 
 The dedicated patch branch is validated by GitHub Actions on Ubuntu and Windows: 175 tests passed on each OS; Python syntax checks and 12 Web JavaScript blocks/files passed; `build_release.py` produced and integrity-checked a 100-file `skill.zip`. Rendering uses FFmpeg's file-backed `-/filter_complex` option (FFmpeg 7.1+), which is compatible with the repository's FFmpeg 8.1 baseline and FFmpeg 9. The patch remains a PR until reviewed/merged.
+
+
+### Character-state JSON Schema scope
+
+`references/character-state.schema.json` validates only the **candidate import payload** (`episode_id`, `character_states`, `character_state_changes`). It is not a schema for a complete episode dossier. `examples/character-state-candidates.example.json` is the matching candidate payload example. `examples/character-state-base.example.json` is a complete dossier example and is validated by `scripts/dossier_v3.py` / the Python business validator, not by the candidate-only JSON Schema. Cross-record references, review snapshots and temporal constraints are also enforced by Python.
