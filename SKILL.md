@@ -448,3 +448,6 @@ For every `character_state_changes` record, each referenced context event must h
 
 
 v4.3.1 状态记录只允许 `references/character-state.schema.json` 定义的字段；未知字段会被 Python 校验拒绝，防止字段拼写错误静默通过。
+
+
+v4.3.1 验证记录：GitHub Actions 的 Ubuntu 与 Windows 构建均通过，每个平台 175 项测试通过；Python 语法与 12 个 Web JavaScript 块/文件检查通过；完整构建生成并校验 100 文件 `skill.zip`。渲染器使用 FFmpeg 7.1+ 的 `-/filter_complex` 文件输入语法，兼容 FFmpeg 8.1 基线及 FFmpeg 9。
