@@ -247,6 +247,24 @@ class StateSeriesTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'缺少有效 state_ids'):
                 compile_state_cut(self.db,'SER',self.gid,'1',self.sources)
 
+    def test_unreviewed_target_mapping_stays_unresolved_not_ambiguous(self):
+        d=copy.deepcopy(self.d)
+        relationship={**d['character_states'][0],'state_id':'S3','dimension':'relationship','aspect':'trust','value':'信任同伴','description':'主角明确表达信任','target_character_id':'B','playback_time':15,'audience_available_sec':16,'event_ids':['E1'],'evidence_ids':['V1']}
+        d['character_states'].append(relationship)
+        d['review_history']=[]
+        self.replace(reviewed(d))
+        c=connect(self.db)
+        try:
+            c.execute("UPDATE character_mentions SET review_status='NEED_EVIDENCE' WHERE series_id='SER' AND episode_id='EP001' AND local_character_id='B'")
+            c.commit()
+        finally:c.close()
+        result=self.timeline()
+        target=next(x for x in result['states'] if x['state_id']=='S3')
+        self.assertEqual(target['local_target_character_id'],'B')
+        self.assertIsNone(target['global_target_character_id'])
+        self.assertEqual(target['target_identity_status'],'UNRESOLVED')
+        self.assertNotEqual(target['target_identity_status'],'AMBIGUOUS')
+
     def test_cutoff_time_excludes_future_state_and_change(self):
         result=self.timeline(at_sec=20)
         self.assertEqual([s['state_id'] for s in result['states']],['S1']);self.assertEqual(result['changes'],[])
