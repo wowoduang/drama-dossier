@@ -87,7 +87,12 @@ def main():
             print('# filter graph\n'+flt+'\n# command\n'+' '.join(cmd));return
         out=Path(a.output);out.parent.mkdir(parents=True,exist_ok=True)
         with tempfile.NamedTemporaryFile('w',suffix='.ffscript',encoding='utf-8',delete=False) as f:f.write(flt);fp=f.name
-        try:subprocess.run([fp if x=='FILTER_FILE' else x for x in cmd],check=True)
+        try:
+            try:
+                subprocess.run([fp if x=='FILTER_FILE' else x for x in cmd],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8',errors='replace')
+            except subprocess.CalledProcessError as exc:
+                detail=(exc.stderr or exc.stdout or str(exc))[-6000:]
+                raise RuntimeError(f"FFmpeg 渲染失败（退出码 {exc.returncode}）：\\n{detail}") from exc
         finally:Path(fp).unlink(missing_ok=True)
         print(f'跨集成片渲染完成: {out}')
     except Exception as e:raise SystemExit(f'渲染失败: {e}')
