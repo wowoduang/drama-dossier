@@ -144,3 +144,7 @@ python scripts/character_arc_integrity.py work/state-cut.json work/arc-plan.json
 渲染器使用 FFmpeg 7.1+ 文件输入形式 `-/filter_complex FILTER_FILE`，避免 FFmpeg 9 移除旧的 `-filter_complex_script` 参数。当前基线 FFmpeg 8.1 与 FFmpeg 9 均已在 Windows/Ubuntu CI 构建中验证。
 
 v4.3.1 修复分支的完整构建结果：Windows 175 项测试通过，Ubuntu 175 项测试通过；Python 语法、12 个 Web JavaScript 块/文件及 100 文件 ZIP 完整性均通过。
+
+## Schema 适用范围
+
+`references/character-state.schema.json` 是候选导入载荷 Schema，不是完整 episode dossier Schema。`character-state-candidates.example.json` 对应该 Schema；`character-state-base.example.json` 是完整 dossier，应由 `scripts/dossier_v3.py` 的 Python 校验器校验。不要把完整 dossier 直接送入候选载荷 Schema 并将预期失败误报为档案无效。
