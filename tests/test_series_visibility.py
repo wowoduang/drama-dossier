@@ -59,7 +59,7 @@ class SeriesVisibilityTests(unittest.TestCase):
         corrected=declare_visible(self.db,'S1','character',self.gid,'EP001',['EP001:EVD1'],'经复核纠正为第1集已知','tester',correct=True)
         self.assertEqual(corrected['effective_episode_number'],1)
         c=connect(self.db)
-        try:action=c.execute('SELECT action FROM visibility_audit WHERE series_id=? AND entity_id=? ORDER BY created_at DESC LIMIT 1',( 'S1',self.gid)).fetchone()[0]
+        try:action=c.execute('SELECT action FROM visibility_audit WHERE series_id=? AND entity_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1',( 'S1',self.gid)).fetchone()[0]
         finally:c.close()
         self.assertEqual(action,'CORRECT_VISIBLE_EARLIER')
 
