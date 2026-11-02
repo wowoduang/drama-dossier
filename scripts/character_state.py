@@ -90,8 +90,6 @@ def trajectory(connection, series_id, character_id, as_of, at_sec=None, dimensio
                 if len(approved) == 1:
                     result['global_target_character_id'] = next(iter(approved))
                     result['target_identity_status'] = 'PASS'
-                elif len(approved) > 1:
-                    result['target_identity_status'] = 'AMBIGUOUS'
             return result
         timeline.extend(qualified(s) for s in states)
         ids = {s['state_id'] for s in states}
