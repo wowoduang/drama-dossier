@@ -63,7 +63,7 @@ def declare_visible(db,sid,entity_type,entity_id,episode_id,evidence_refs,reason
         before=c.execute("SELECT * FROM series_visibility WHERE series_id=? AND entity_type=? AND entity_id=?",(sid,entity_type,entity_id)).fetchone()
         requested={"effective_episode_id":episode_id,"effective_episode_number":int(ep[0]),"evidence_refs":refs}
         action="DECLARE_VISIBLE"
-        if before:
+        if before and before["review_status"]=="PASS":
             previous=dict(before)
             previous_number=int(before["effective_episode_number"])
             requested_number=int(ep[0])
@@ -86,6 +86,13 @@ def declare_visible(db,sid,entity_type,entity_id,episode_id,evidence_refs,reason
             if not correct:
                 raise ValueError("新声明将把已知集数提前；如确属纠正，必须显式使用 --correct 并记录审计")
             action="CORRECT_VISIBLE_EARLIER"
+        elif before:
+            # Episode replacement or evidence invalidation reopens the declaration.
+            # A fresh valid declaration at the same/later point may restore it.
+            previous_number=int(before["effective_episode_number"])
+            if int(ep[0])<previous_number and not correct:
+                raise ValueError("新声明将把已知集数提前；如确属纠正，必须显式使用 --correct 并记录审计")
+            action="REDECLARE_AFTER_INVALIDATION" if int(ep[0])>=previous_number else "CORRECT_VISIBLE_EARLIER"
         row=(sid,entity_type,entity_id,episode_id,int(ep[0]),json.dumps(refs,ensure_ascii=False),reason,reviewer,"PASS",now())
         c.execute("INSERT OR REPLACE INTO series_visibility VALUES(?,?,?,?,?,?,?,?,?,?)",row)
         aid="VISAUD_"+uuid.uuid4().hex[:12]
