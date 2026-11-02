@@ -156,11 +156,11 @@
 
 
 
-## v4.3.1 audit follow-up (pending cross-platform CI)
+## v4.3.1 audit follow-up (CI validated)
 
 - N1: unreviewed/draft lifecycle conflicts remain visible in diagnostics but no longer block independently approved state-change material; approved conflicts remain blocking and malformed diagnostic contracts fail closed.
 - N2: visibility declarations are monotonic; later declarations are audited without replacing an earlier effective episode. Moving visibility earlier requires explicit `--correct` and is audited.
 - N3: test file IO and captured subprocess text now specify UTF-8 explicitly to avoid locale-dependent failures.
-- N4: validation workflow refreshes and commits the generated `skill.zip`, then dispatches a second validation run for the new HEAD; workflow-dispatch validation checks package/source consistency.
+- N4: PR validation rebuilds and commits the generated `skill.zip`; the canonical Ubuntu PR job checks package/source consistency.
 - N5: schema scope is explicitly documented as candidate payload only; complete dossiers use the Python dossier validator.
-- CI validation is pending; do not treat these source changes as release-ready until the newest HEAD passes both platforms.
+- CI run 41488884867 passed on the current PR HEAD: 179 tests on Ubuntu and Windows, plus a second full Windows release build with `PYTHONUTF8=0`; Python syntax, 12 Web JavaScript blocks/files and 100-file ZIP integrity checks passed.
