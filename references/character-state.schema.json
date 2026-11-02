@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Drama Dossier optional character-state candidates v4.3",
+  "title": "Drama Dossier optional character-state candidates v4.3.1",
   "description": "结构约束；跨引用、时序、审核快照与证据归属由 Python 校验。导入无条件设为 UNREVIEWED。",
   "type": "object",
   "required": [
