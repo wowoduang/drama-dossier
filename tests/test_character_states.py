@@ -225,6 +225,12 @@ class StateSeriesTests(unittest.TestCase):
         late=self.timeline(at_sec=50)
         self.assertTrue(any(x.get('code')=='STATE_TRANSITION_FORK' for x in late['conflicts']))
 
+    def test_compiler_rejects_malformed_state_conflict_without_keyerror(self):
+        from unittest.mock import patch
+        with patch('character_state.state_graph_issues', return_value=[{'code':'BROKEN_DIAGNOSTIC','severity':'WARN'}]):
+            with self.assertRaisesRegex(ValueError,'缺少有效 state_ids'):
+                compile_state_cut(self.db,'SER',self.gid,'1',self.sources)
+
     def test_cutoff_time_excludes_future_state_and_change(self):
         result=self.timeline(at_sec=20)
         self.assertEqual([s['state_id'] for s in result['states']],['S1']);self.assertEqual(result['changes'],[])
