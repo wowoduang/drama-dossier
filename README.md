@@ -429,3 +429,11 @@ The dedicated patch branch is validated by GitHub Actions on Ubuntu and Windows:
 ### Character-state JSON Schema scope
 
 `references/character-state.schema.json` validates only the **candidate import payload** (`episode_id`, `character_states`, `character_state_changes`). It is not a schema for a complete episode dossier. `examples/character-state-candidates.example.json` is the matching candidate payload example. `examples/character-state-base.example.json` is a complete dossier example and is validated by `scripts/dossier_v3.py` / the Python business validator, not by the candidate-only JSON Schema. Cross-record references, review snapshots and temporal constraints are also enforced by Python.
+
+
+## v4.3.1 audit follow-up fixes (pending CI)
+
+- State graph conflicts involving unreviewed/draft records remain visible as non-blocking diagnostics and no longer exclude independently approved state-change material. Conflicts whose referenced states and changes are all approved remain blocking.
+- Repeated visibility declarations are monotonic: a later episode declaration is audited but does not replace an earlier effective episode. Moving the effective visibility earlier requires the explicit `--correct` option and an audit entry.
+- Tests use explicit UTF-8 for file IO and captured subprocess text instead of relying on Windows locale defaults.
+- Release workflow refreshes the committed `skill.zip` from current source on push, dispatches validation for the resulting HEAD, and checks package reproducibility. Windows CI also runs tests with Python UTF-8 mode disabled.
