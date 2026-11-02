@@ -75,7 +75,21 @@ def trajectory(connection, series_id, character_id, as_of, at_sec=None, dimensio
         payloads[ep] = data
         bound = at_sec if at_sec is not None and ep == cutoff_ep else float('inf')
         states = [s for s in data.get('character_states', []) if s['character_id'] == local and (dimension is None or s['dimension'] == dimension) and s['playback_time'] <= bound and s['audience_available_sec'] <= bound and usable(data, s)]
-        qualified = lambda obj: {**deepcopy(obj), 'episode_id': ep, 'episode_number': row['episode_number'], 'character_name': index(data, 'characters', 'character_id')[local].get('canonical_name', local)}
+        def qualified(obj):
+            result = {**deepcopy(obj), 'episode_id': ep, 'episode_number': row['episode_number'], 'character_name': index(data, 'characters', 'character_id')[local].get('canonical_name', local)}
+            target_local = obj.get('target_character_id')
+            result['local_target_character_id'] = target_local
+            result['global_target_character_id'] = None
+            result['target_identity_status'] = 'NOT_APPLICABLE' if target_local is None else 'UNRESOLVED'
+            if target_local is not None:
+                mappings = connection.execute("SELECT global_character_id, review_status FROM character_mentions WHERE series_id=? AND episode_id=? AND local_character_id=?", (series_id, ep, target_local)).fetchall()
+                approved = {m['global_character_id'] for m in mappings if m['review_status'] == 'PASS'}
+                if len(approved) == 1:
+                    result['global_target_character_id'] = next(iter(approved))
+                    result['target_identity_status'] = 'PASS'
+                elif len(approved) > 1:
+                    result['target_identity_status'] = 'AMBIGUOUS'
+            return result
         timeline.extend(qualified(s) for s in states)
         ids = {s['state_id'] for s in states}
         for change in data.get('character_state_changes', []):
