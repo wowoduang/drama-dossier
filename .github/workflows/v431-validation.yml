@@ -59,3 +59,19 @@ jobs:
           name: drama-dossier-skill-${{ matrix.os }}-py${{ matrix.python-version }}
           path: skill.zip
           if-no-files-found: error
+  browser-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: npm install --no-save --no-package-lock playwright
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Exercise browser review and editing workflows
+        run: node .github/tests/browser_ui_smoke.cjs
