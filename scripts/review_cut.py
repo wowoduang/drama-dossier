@@ -65,7 +65,7 @@ def run_ffmpeg_with_filter_script(cmd, filters):
             script_path = f.name
         render_cmd = [script_path if x == 'FILTER_FILE' else x for x in cmd]
         try:
-            subprocess.run(render_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            subprocess.run(render_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace')
         except subprocess.CalledProcessError as exc:
             detail = (exc.stderr or exc.stdout or str(exc))[-4000:]
             raise ValueError(f"FFmpeg 渲染失败（退出码 {exc.returncode}）：\n{detail}") from exc
