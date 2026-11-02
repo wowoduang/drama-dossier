@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render multi-source cross-episode projects with FFmpeg."""
 from __future__ import annotations
-import argparse,json,shutil,subprocess,tempfile
+import argparse,json,shutil,subprocess,tempfile,sys
 from pathlib import Path
 from typing import Any
 
