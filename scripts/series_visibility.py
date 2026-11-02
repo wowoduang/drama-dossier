@@ -8,7 +8,7 @@ HERE=Path(__file__).resolve().parent
 sys.path.insert(0,str(HERE))
 from series_memory import connect
 
-def now():return datetime.now(timezone.utc).isoformat(timespec="seconds")
+def now():return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 def ensure_table(c):
     c.execute("CREATE TABLE IF NOT EXISTS series_visibility(series_id TEXT NOT NULL,entity_type TEXT NOT NULL,entity_id TEXT NOT NULL,effective_episode_id TEXT NOT NULL,effective_episode_number INTEGER NOT NULL,evidence_refs_json TEXT NOT NULL,reason TEXT NOT NULL,reviewer TEXT NOT NULL DEFAULT '',review_status TEXT NOT NULL DEFAULT 'PASS',created_at TEXT NOT NULL,PRIMARY KEY(series_id,entity_type,entity_id),FOREIGN KEY(series_id) REFERENCES series(series_id))")
     c.execute("CREATE TABLE IF NOT EXISTS visibility_audit(audit_id TEXT PRIMARY KEY,series_id TEXT NOT NULL,entity_type TEXT NOT NULL,entity_id TEXT NOT NULL,action TEXT NOT NULL,before_json TEXT NOT NULL,after_json TEXT NOT NULL,reason TEXT NOT NULL,reviewer TEXT NOT NULL,created_at TEXT NOT NULL)")
