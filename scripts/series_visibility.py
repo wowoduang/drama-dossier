@@ -13,7 +13,7 @@ def ensure_table(c):
     c.execute("CREATE TABLE IF NOT EXISTS series_visibility(series_id TEXT NOT NULL,entity_type TEXT NOT NULL,entity_id TEXT NOT NULL,effective_episode_id TEXT NOT NULL,effective_episode_number INTEGER NOT NULL,evidence_refs_json TEXT NOT NULL,reason TEXT NOT NULL,reviewer TEXT NOT NULL DEFAULT '',review_status TEXT NOT NULL DEFAULT 'PASS',created_at TEXT NOT NULL,PRIMARY KEY(series_id,entity_type,entity_id),FOREIGN KEY(series_id) REFERENCES series(series_id))")
     c.execute("CREATE TABLE IF NOT EXISTS visibility_audit(audit_id TEXT PRIMARY KEY,series_id TEXT NOT NULL,entity_type TEXT NOT NULL,entity_id TEXT NOT NULL,action TEXT NOT NULL,before_json TEXT NOT NULL,after_json TEXT NOT NULL,reason TEXT NOT NULL,reviewer TEXT NOT NULL,created_at TEXT NOT NULL)")
 
-def declare_visible(db,sid,entity_type,entity_id,episode_id,evidence_refs,reason,reviewer=""):
+def declare_visible(db,sid,entity_type,entity_id,episode_id,evidence_refs,reason,reviewer="",correct=False):
     if entity_type not in {"character","storyline","thread","causal_edge"}:raise ValueError("entity_type 必须为 character/storyline/thread/causal_edge")
     if not reason.strip():raise ValueError("必须填写何以在该集已可知的理由")
     refs=list(dict.fromkeys(evidence_refs or []))
@@ -59,18 +59,45 @@ def declare_visible(db,sid,entity_type,entity_id,episode_id,evidence_refs,reason
                 row=c.execute("SELECT evidence_refs_json FROM cross_episode_causal_edges WHERE series_id=? AND edge_id=?",(sid,entity_id)).fetchone()
                 relevant |= bool(row and ref in json.loads(row[0] or '[]'))
         if not relevant:raise ValueError("可见性证据必须与所声明的人物/剧情线/伏笔/因果边直接关联")
-        ensure_table(c);before=c.execute("SELECT * FROM series_visibility WHERE series_id=? AND entity_type=? AND entity_id=?",(sid,entity_type,entity_id)).fetchone()
+        ensure_table(c)
+        before=c.execute("SELECT * FROM series_visibility WHERE series_id=? AND entity_type=? AND entity_id=?",(sid,entity_type,entity_id)).fetchone()
+        requested={"effective_episode_id":episode_id,"effective_episode_number":int(ep[0]),"evidence_refs":refs}
+        action="DECLARE_VISIBLE"
+        if before:
+            previous=dict(before)
+            previous_number=int(before["effective_episode_number"])
+            requested_number=int(ep[0])
+            if requested_number>previous_number:
+                # Visibility is monotonic: later supporting evidence must not
+                # revoke an already established earlier audience-knowledge point.
+                action="DECLARE_VISIBLE_LATER_IGNORED"
+                after={"requested":requested,"effective_retained":{"effective_episode_id":before["effective_episode_id"],"effective_episode_number":previous_number,"evidence_refs":json.loads(before["evidence_refs_json"])}}
+                aid="VISAUD_"+uuid.uuid4().hex[:12]
+                c.execute("INSERT INTO visibility_audit VALUES(?,?,?,?,?,?,?,?,?,?)",(aid,sid,entity_type,entity_id,action,json.dumps(previous,ensure_ascii=False),json.dumps(after,ensure_ascii=False),reason,reviewer,now()))
+                c.commit()
+                return {"entity_type":entity_type,"entity_id":entity_id,"effective_episode_id":before["effective_episode_id"],"effective_episode_number":previous_number,"evidence_refs":json.loads(before["evidence_refs_json"]),"review_status":before["review_status"],"declaration_recorded":True,"effective_retained":True}
+            if requested_number==previous_number:
+                action="DECLARE_VISIBLE_CONFIRMATION"
+                after={"requested":requested,"effective_retained":{"effective_episode_id":before["effective_episode_id"],"effective_episode_number":previous_number,"evidence_refs":json.loads(before["evidence_refs_json"])}}
+                aid="VISAUD_"+uuid.uuid4().hex[:12]
+                c.execute("INSERT INTO visibility_audit VALUES(?,?,?,?,?,?,?,?,?,?)",(aid,sid,entity_type,entity_id,action,json.dumps(previous,ensure_ascii=False),json.dumps(after,ensure_ascii=False),reason,reviewer,now()))
+                c.commit()
+                return {"entity_type":entity_type,"entity_id":entity_id,"effective_episode_id":before["effective_episode_id"],"effective_episode_number":previous_number,"evidence_refs":json.loads(before["evidence_refs_json"]),"review_status":before["review_status"],"declaration_recorded":True,"effective_retained":True}
+            if not correct:
+                raise ValueError("新声明将把已知集数提前；如确属纠正，必须显式使用 --correct 并记录审计")
+            action="CORRECT_VISIBLE_EARLIER"
         row=(sid,entity_type,entity_id,episode_id,int(ep[0]),json.dumps(refs,ensure_ascii=False),reason,reviewer,"PASS",now())
         c.execute("INSERT OR REPLACE INTO series_visibility VALUES(?,?,?,?,?,?,?,?,?,?)",row)
         aid="VISAUD_"+uuid.uuid4().hex[:12]
-        c.execute("INSERT INTO visibility_audit VALUES(?,?,?,?,?,?,?,?,?,?)",(aid,sid,entity_type,entity_id,"DECLARE_VISIBLE",json.dumps(dict(before) if before else {},ensure_ascii=False),json.dumps({"effective_episode_id":episode_id,"effective_episode_number":int(ep[0]),"evidence_refs":refs},ensure_ascii=False),reason,reviewer,now()))
-        c.commit();return {"entity_type":entity_type,"entity_id":entity_id,"effective_episode_id":episode_id,"effective_episode_number":int(ep[0]),"evidence_refs":refs,"review_status":"PASS"}
+        after={"effective_episode_id":episode_id,"effective_episode_number":int(ep[0]),"evidence_refs":refs}
+        c.execute("INSERT INTO visibility_audit VALUES(?,?,?,?,?,?,?,?,?,?)",(aid,sid,entity_type,entity_id,action,json.dumps(dict(before) if before else {},ensure_ascii=False),json.dumps(after,ensure_ascii=False),reason,reviewer,now()))
+        c.commit();return {"entity_type":entity_type,"entity_id":entity_id,"effective_episode_id":episode_id,"effective_episode_number":int(ep[0]),"evidence_refs":refs,"review_status":"PASS","declaration_recorded":True,"effective_retained":False if before else True}
     finally:c.close()
 
 def main():
     p=argparse.ArgumentParser(description="声明跨集身份/关系/伏笔/因果在何集已对观众可知")
-    p.add_argument("db");p.add_argument("--series-id",required=True);p.add_argument("--entity-type",required=True,choices=["character","storyline","thread","causal_edge"]);p.add_argument("--entity-id",required=True);p.add_argument("--known-by-episode",required=True);p.add_argument("--evidence-ref",action="append",required=True);p.add_argument("--reason",required=True);p.add_argument("--reviewer",default="")
+    p.add_argument("db");p.add_argument("--series-id",required=True);p.add_argument("--entity-type",required=True,choices=["character","storyline","thread","causal_edge"]);p.add_argument("--entity-id",required=True);p.add_argument("--known-by-episode",required=True);p.add_argument("--evidence-ref",action="append",required=True);p.add_argument("--reason",required=True);p.add_argument("--reviewer",default="");p.add_argument("--correct",action="store_true",help="显式确认将可见性生效集数提前，并记录审计")
     a=p.parse_args()
-    try:print(json.dumps(declare_visible(a.db,a.series_id,a.entity_type,a.entity_id,a.known_by_episode,a.evidence_ref,a.reason,a.reviewer),ensure_ascii=False,indent=2))
+    try:print(json.dumps(declare_visible(a.db,a.series_id,a.entity_type,a.entity_id,a.known_by_episode,a.evidence_ref,a.reason,a.reviewer,a.correct),ensure_ascii=False,indent=2))
     except Exception as e:print(f"错误: {e}",file=sys.stderr);raise SystemExit(2)
 if __name__=="__main__":main()
