@@ -152,7 +152,7 @@ v4.3.1 修复分支的完整构建结果：Windows 175 项测试通过，Ubuntu 
 
 ## 可见性声明重复与纠正
 
-同一实体已经存在可见性声明时，较晚集数的重复声明只记录审计，不覆盖更早的有效集数。若要将生效集数改早（这会扩大可见范围），必须显式确认并使用 `--correct`：
+同一实体已经存在可见性声明时，较晚集数的重复声明只记录审计，不覆盖更早的有效集数。若要修改已审核的生效集数（提前会扩大可见范围，延后会收紧可见范围），必须显式确认并使用 `--correct`：
 
 ```bash
 python scripts/series_visibility.py work/series.sqlite --series-id SERIES01 --entity-type character --entity-id GLOBAL_CHAR01 --known-by-episode EP010 --evidence-ref EP010:EVD001 --reason "复核后确认第10集已揭晓" --reviewer editor --correct
