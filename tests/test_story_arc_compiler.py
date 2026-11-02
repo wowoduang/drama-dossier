@@ -114,7 +114,7 @@ class StoryArcCompilerTests(unittest.TestCase):
         c=connect(self.db)
         try:c.execute("UPDATE events SET modality='imagined' WHERE episode_id='EP002' AND event_id='EVT_PEAK'");c.commit()
         finally:c.close()
-        pf=self.root/'plan.json';pf.write_text(json.dumps(self.plan(),encoding='utf-8'),encoding='utf-8')
+        pf=self.root/'plan.json';pf.write_text(json.dumps(self.plan()),encoding='utf-8')
         with self.assertRaisesRegex(ValueError,'不允许将 imagined'):compile_story_arc(self.db,self.sources_path,pf,self.root/'bad.json')
 
     def test_story_arc_project_renders_multisource_mp4(self):
@@ -124,7 +124,7 @@ class StoryArcCompilerTests(unittest.TestCase):
         for i,ep in enumerate(('EP001','EP002','EP003')):
             video=Path(self.sources[ep])
             subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-f','lavfi','-i',f'testsrc=size=64x64:rate=5:duration=20','-f','lavfi','-i',f'sine=frequency={440+i*80}:duration=20','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-c:a','aac','-shortest',str(video)],check=True)
-        pf=self.root/'plan.json';pf.write_text(json.dumps(self.plan(),encoding='utf-8'),encoding='utf-8')
+        pf=self.root/'plan.json';pf.write_text(json.dumps(self.plan()),encoding='utf-8')
         project_path=self.root/'story-project.json'
         compile_story_arc(self.db,self.sources_path,pf,project_path)
         output=self.root/'story-arc.mp4'
@@ -144,7 +144,7 @@ class StoryArcCompilerTests(unittest.TestCase):
         c=connect(self.db)
         try:c.execute("UPDATE episode_causal_edges SET review_status='UNREVIEWED' WHERE episode_id='EP002' AND cause_id='CAU2'");c.commit()
         finally:c.close()
-        pf=self.root/'plan.json';pf.write_text(json.dumps(self.plan(),encoding='utf-8'),encoding='utf-8')
+        pf=self.root/'plan.json';pf.write_text(json.dumps(self.plan()),encoding='utf-8')
         out=compile_story_arc(self.db,self.sources_path,pf,self.root/'draft.json')
         self.assertFalse(out['narrative_audit']['release_ready'])
         self.assertTrue(out['narrative_audit']['continuity_review_warnings'])
