@@ -125,7 +125,7 @@
 ## v4.3.1 (patch candidate)
 
 - Require state-change context events to fall within the inclusive source-to-destination state time interval.
-- Add local/global target-character mapping fields to trajectory records; unresolved and ambiguous mappings are explicit.
+- Add local/global target-character mapping fields to trajectory records; unreviewed or absent mappings remain `UNRESOLVED`. The current one-to-one local mention schema makes `AMBIGUOUS` unreachable, so that status was removed rather than expanding the database model.
 - Add diagnostics for overlapping conflicting state validity intervals and transition graph forks/merges.
 - Add a user-defined character-arc milestone coverage checker; no automatic claim of semantic growth.
 - Added regression coverage for event timing and state graph diagnostics. Full repository validation remains pending.
@@ -138,3 +138,6 @@
 - B3: scope state-graph diagnostics to the requested local character in trajectory queries.
 - B4: close the FFmpeg filter-script temporary file before launching the subprocess on Windows, clean it up in `finally`, and preserve stderr in a CLI-friendly error.
 - Added regression tests for B1/B2/B3. B4 still requires Windows execution in the reported environment. B5-B10 are not changed until their full report evidence is available.
+
+- Fix arc integrity coverage to ignore disabled clips and reject unknown plan fields; reject unknown character-state fields in Python validation and JSON Schema.
+- Add regression tests for review downgrade, enabled/disabled arc coverage, unknown fields, unresolved target mappings and Windows-safe FFmpeg temp-file lifecycle.
