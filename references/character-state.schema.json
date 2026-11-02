@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Drama Dossier optional character-state candidates v4.3",
-  "description": "结构约束；跨引用、时序、审核快照与证据归属由 Python 校验。导入无条件设为 UNREVIEWED。",
+  "title": "Drama Dossier optional character-state candidates v4.3.1",
+  "description": "仅校验 character-state candidates 导入载荷：顶层必须为 episode_id、character_states、character_state_changes。它不校验完整 dossier；完整 dossier（例如 character-state-base.example.json）应使用 scripts/dossier_v3.py 的 Python 业务校验器。跨引用、时序、审核快照与证据归属也由 Python 校验。导入无条件设为 UNREVIEWED。",
   "type": "object",
   "required": [
     "episode_id",
@@ -29,6 +29,7 @@
   "$defs": {
     "state": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "state_id",
         "character_id",
@@ -154,6 +155,7 @@
     },
     "change": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "change_id",
         "character_id",

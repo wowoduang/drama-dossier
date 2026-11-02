@@ -128,9 +128,10 @@ class StoryArcCompilerTests(unittest.TestCase):
         project_path=self.root/'story-project.json'
         compile_story_arc(self.db,self.sources_path,pf,project_path)
         output=self.root/'story-arc.mp4'
-        subprocess.run([sys.executable,str(ROOT/'scripts'/'render_series_project.py'),str(project_path),str(output),'--width','160','--height','90','--fps','5','--preset','ultrafast'],check=True,capture_output=True,text=True)
+        render_result=subprocess.run([sys.executable,str(ROOT/'scripts'/'render_series_project.py'),str(project_path),str(output),'--width','160','--height','90','--fps','5','--preset','ultrafast'],check=False,capture_output=True,text=True, encoding='utf-8', errors='replace')
+        self.assertEqual(render_result.returncode,0,render_result.stderr[-6000:])
         self.assertTrue(output.is_file())
-        probe=subprocess.run(['ffprobe','-v','error','-show_entries','stream=codec_type,codec_name','-of','json',str(output)],capture_output=True,text=True,check=True)
+        probe=subprocess.run(['ffprobe','-v','error','-show_entries','stream=codec_type,codec_name','-of','json',str(output)],capture_output=True,text=True, encoding='utf-8', errors='replace',check=True)
         streams=json.loads(probe.stdout)['streams']
         self.assertTrue(any(x['codec_type']=='video' and x['codec_name']=='h264' for x in streams))
         self.assertTrue(any(x['codec_type']=='audio' and x['codec_name']=='aac' for x in streams))

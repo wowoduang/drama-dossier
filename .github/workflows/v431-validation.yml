@@ -1,0 +1,69 @@
+name: v4.3.1 validation
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v431-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/v4.3.1-state-logic
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install FFmpeg (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Install FFmpeg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install ffmpeg --yes --no-progress
+      - name: Build and run full validation
+        run: python scripts/build_release.py
+      - name: Commit refreshed package
+        if: matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request'
+        run: |
+          if ! git diff --quiet -- skill.zip; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add skill.zip
+            git commit -m "build(v4.3.1): refresh skill package"
+            git push origin HEAD:refs/heads/fix/v4.3.1-state-logic
+          fi
+      - name: Verify committed package matches source
+        if: matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request'
+        run: git diff --exit-code -- skill.zip
+      - name: Windows default-encoding regression (tests and release build)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          PYTHONUTF8: "0"
+        run: python scripts/build_release.py
+      - name: Upload validated skill package
+        uses: actions/upload-artifact@v4
+        with:
+          name: drama-dossier-skill-${{ matrix.os }}
+          path: skill.zip
+          if-no-files-found: error

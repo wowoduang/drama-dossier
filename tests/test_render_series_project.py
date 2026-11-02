@@ -17,7 +17,7 @@ class MultiRenderTests(unittest.TestCase):
             cmd,flt=build_command(load_project(pp),out,width=320,height=240,fps=25)
             script=root/'filter.ffscript';script.write_text(flt,encoding='utf-8')
             subprocess.run([str(script) if x=='FILTER_FILE' else x for x in cmd],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-            info=subprocess.run(['ffprobe','-v','error','-show_entries','format=duration:stream=codec_type,codec_name','-of','json',str(out)],capture_output=True,text=True,check=True)
+            info=subprocess.run(['ffprobe','-v','error','-show_entries','format=duration:stream=codec_type,codec_name','-of','json',str(out)],capture_output=True,text=True, encoding='utf-8', errors='replace',check=True)
             meta=json.loads(info.stdout);duration=float(meta['format']['duration']);types={s['codec_type'] for s in meta['streams']}
             self.assertAlmostEqual(duration,2.0,delta=.25);self.assertEqual(types,{'video','audio'})
 
@@ -31,7 +31,7 @@ class MultiRenderTests(unittest.TestCase):
             pp=root/'project.json';pp.write_text(json.dumps(project),encoding='utf-8');out=root/'mixed.mp4'
             cmd,flt=build_command(load_project(pp),out,width=320,height=240,fps=25);script=root/'filter.ffscript';script.write_text(flt,encoding='utf-8')
             subprocess.run([str(script) if x=='FILTER_FILE' else x for x in cmd],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-            info=subprocess.run(['ffprobe','-v','error','-show_entries','format=duration:stream=codec_type','-of','json',str(out)],capture_output=True,text=True,check=True)
+            info=subprocess.run(['ffprobe','-v','error','-show_entries','format=duration:stream=codec_type','-of','json',str(out)],capture_output=True,text=True, encoding='utf-8', errors='replace',check=True)
             meta=json.loads(info.stdout);self.assertAlmostEqual(float(meta['format']['duration']),2.0,delta=.25);self.assertEqual({x['codec_type'] for x in meta['streams']},{'video','audio'})
 
 
@@ -42,5 +42,25 @@ class MultiRenderTests(unittest.TestCase):
             project={'project_type':'cross_episode_compilation','clips':[{'clip_id':'TOO_LONG','source_video':str(video),'start_sec':0,'end_sec':2,'enabled':True}]}
             with self.assertRaisesRegex(ValueError,'超出源视频时长'):
                 build_command(project,root/'bad.mp4',width=320,height=240,fps=25)
+
+
+class CliEncodingTests(unittest.TestCase):
+    def test_renderer_cli_error_is_safe_without_python_utf8_mode(self):
+        import os
+        with tempfile.TemporaryDirectory() as td:
+            missing=Path(td)/'不存在的项目.json'
+            output=Path(td)/'输出.mp4'
+            env=os.environ.copy()
+            env['PYTHONUTF8']='0'
+            env.pop('PYTHONIOENCODING',None)
+            result=subprocess.run(
+                [sys.executable,str(ROOT/'scripts'/'render_series_project.py'),str(missing),str(output)],
+                capture_output=True,text=True,encoding='utf-8',errors='replace',env=env
+            )
+            self.assertNotEqual(result.returncode,0)
+            self.assertTrue(result.stderr)
+            self.assertNotIn('UnicodeEncodeError',result.stderr)
+            self.assertNotIn('charmap codec can\'t encode',result.stderr)
+
 
 if __name__=='__main__':unittest.main()

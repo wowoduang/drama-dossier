@@ -432,3 +432,35 @@ python scripts/shot_continuity.py qc work/shot-continuity.json work/shot-continu
 - 用 `timeline --character ... --as-of ... [--at-sec ...]` 检索。跨集身份沿用已有映射和观众可见性声明；不凭名字自动合并、不让旧状态跨集自动延续。
 - 用 `compile` 保守提取显式变化前后两端的素材，保留 state/change/event/evidence ID；不凭先后推断状态变化的因果，不为凑时长拆掉必要铺垫。没有合格状态素材时明确缺失。
 - 只把审核有效、非解释性的记录用于自动选材；新剪辑仍待审，继续使用版本批准及成片复核流程。状态记录是辅助理解，不代表自动读心或自动完成完整人物弧线。
+
+
+## v4.3.1 state-transition integrity
+
+For every `character_state_changes` record, each referenced context event must have a valid playback timestamp within the inclusive interval `from_state.playback_time <= event.playback_time <= to_state.playback_time`. The event must still satisfy the existing character participation, evidence, audience-availability and review checks. A temporal match is only contextual support; it does not establish causality. If an event falls outside the interval, correct the reference or retain the state records without asserting a transition, then re-review the change.
+
+
+## v4.3.1 人物状态逻辑加固
+
+- 状态变化引用的每个上下文事件必须位于 `from_state.playback_time <= event.playback_time <= to_state.playback_time` 的闭区间内；这只是时间上下文，不证明因果。
+- 关系状态轨迹同时输出 `local_target_character_id` 与审核映射唯一时的 `global_target_character_id`。当前数据库对每个分集人物只允许一条全局映射，因此未审核映射标记 `UNRESOLVED`；不提供不可达的 `AMBIGUOUS` 状态。
+- `state_graph_issues()` 诊断状态有效期重叠、变化分叉和合流；警告需要人工判断，不把时点状态推断成持续心理。
+- 用 `scripts/character_arc_integrity.py PROJECT ARC_PLAN OUTPUT` 核对用户指定的成长里程碑是否有状态、变化和事件素材覆盖。仅 `enabled` 不为 `false` 的片段计入覆盖；未知计划字段会报错。该工具只验证清单覆盖，不自动评价人物是否真正成长。
+
+
+v4.3.1 状态记录只允许 `references/character-state.schema.json` 定义的字段；未知字段会被 Python 校验拒绝，防止字段拼写错误静默通过。
+
+
+v4.3.1 验证记录：GitHub Actions 的 Ubuntu 与 Windows 构建均通过，每个平台 175 项测试通过；Python 语法与 12 个 Web JavaScript 块/文件检查通过；完整构建生成并校验 100 文件 `skill.zip`。渲染器使用 FFmpeg 7.1+ 的 `-/filter_complex` 文件输入语法，兼容 FFmpeg 8.1 基线及 FFmpeg 9。
+
+
+### JSON Schema 适用范围
+
+`references/character-state.schema.json` 只适用于人物状态候选导入载荷（顶层 `episode_id`、`character_states`、`character_state_changes`），不适用于完整 episode dossier。对应示例是 `examples/character-state-candidates.example.json`。`examples/character-state-base.example.json` 是完整 dossier 示例，应使用 `scripts/dossier_v3.py` 的 Python 业务校验；跨记录引用、审核快照和时间约束也由 Python 校验器负责。
+
+
+### v4.3.1 审计后补充规则
+
+- 状态图冲突若涉及未审核草稿，仍作为诊断展示，但不阻断独立通过审核的状态变化素材；全部相关状态和变化均已审核时，冲突才阻断编译。
+- 可见性声明保持单调：较晚集数的重复声明写入审计，但不覆盖更早的有效声明。若要把已审核的生效集数改早或改晚，必须显式使用 `series_visibility.py ... --correct`，并留下审计记录。
+- 测试文本读写和子进程捕获输出显式使用 UTF-8，不依赖 Windows 默认区域编码。
+- PR 验证工作流会从当前源码刷新并提交 `skill.zip`，Ubuntu 主构建会核对发布包与源码一致；Windows CI 还会在关闭 Python UTF-8 模式时运行完整发布构建。

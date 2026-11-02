@@ -136,7 +136,7 @@ class SeriesCompilerTests(unittest.TestCase):
         out=self.root/'series-cut.mp4';cmd,flt=build_command(project,out,width=320,height=240,fps=25)
         script=self.root/'filter.ffscript';script.write_text(flt,encoding='utf-8')
         subprocess.run([str(script) if x=='FILTER_FILE' else x for x in cmd],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-        info=subprocess.run(['ffprobe','-v','error','-show_entries','format=duration:stream=codec_type','-of','json',str(out)],capture_output=True,text=True,check=True)
+        info=subprocess.run(['ffprobe','-v','error','-show_entries','format=duration:stream=codec_type','-of','json',str(out)],capture_output=True,text=True, encoding='utf-8', errors='replace',check=True)
         meta=json.loads(info.stdout)
         self.assertAlmostEqual(float(meta['format']['duration']),18.0,delta=.5)
         self.assertEqual({x['codec_type'] for x in meta['streams']},{'video','audio'})

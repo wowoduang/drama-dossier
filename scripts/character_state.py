@@ -10,7 +10,7 @@ from copy import deepcopy
 import json
 from pathlib import Path
 
-from character_state_model import COLLECTIONS, DIMENSIONS, number, usable, index
+from character_state_model import COLLECTIONS, DIMENSIONS, number, usable, index, state_graph_issues
 from dossier_v3 import load, migrate_to_v35, validate, add_review
 from edit_versions import version, write_new
 from series_memory import connect
@@ -18,7 +18,7 @@ from series_search import resolve_cutoff
 from story_arc_compiler import _visible_by
 from series_compiler import load_sources
 
-VERSION = '4.3.0'
+VERSION = '4.3.1'
 
 
 def import_candidates(dossier, payload):
@@ -73,9 +73,24 @@ def trajectory(connection, series_id, character_id, as_of, at_sec=None, dimensio
         errors = validate(data)
         if errors: raise ValueError(f'{ep} 状态档案校验失败: ' + '; '.join(errors))
         payloads[ep] = data
+        graph_issues = state_graph_issues(data, character_id=local, at_sec=at_sec if ep == cutoff_ep else None)
+        for issue in graph_issues:
+            conflicts.append({'episode_id': ep, **issue})
         bound = at_sec if at_sec is not None and ep == cutoff_ep else float('inf')
         states = [s for s in data.get('character_states', []) if s['character_id'] == local and (dimension is None or s['dimension'] == dimension) and s['playback_time'] <= bound and s['audience_available_sec'] <= bound and usable(data, s)]
-        qualified = lambda obj: {**deepcopy(obj), 'episode_id': ep, 'episode_number': row['episode_number'], 'character_name': index(data, 'characters', 'character_id')[local].get('canonical_name', local)}
+        def qualified(obj):
+            result = {**deepcopy(obj), 'episode_id': ep, 'episode_number': row['episode_number'], 'character_name': index(data, 'characters', 'character_id')[local].get('canonical_name', local)}
+            target_local = obj.get('target_character_id')
+            result['local_target_character_id'] = target_local
+            result['global_target_character_id'] = None
+            result['target_identity_status'] = 'NOT_APPLICABLE' if target_local is None else 'UNRESOLVED'
+            if target_local is not None:
+                mappings = connection.execute("SELECT global_character_id, review_status FROM character_mentions WHERE series_id=? AND episode_id=? AND local_character_id=?", (series_id, ep, target_local)).fetchall()
+                approved = {m['global_character_id'] for m in mappings if m['review_status'] == 'PASS'}
+                if len(approved) == 1:
+                    result['global_target_character_id'] = next(iter(approved))
+                    result['target_identity_status'] = 'PASS'
+            return result
         timeline.extend(qualified(s) for s in states)
         ids = {s['state_id'] for s in states}
         for change in data.get('character_state_changes', []):
@@ -109,7 +124,34 @@ def compile_state_cut(db, sid, gid, as_of, sources_path, target_sec=180, at_sec=
     finally: connection.close()
     sources = load_sources(sources_path)
     states = {(s['episode_id'], s['state_id']): s for s in context['states']}
-    blocked = {(x['episode_id'], sid_) for x in context['conflicts'] for sid_ in x['state_ids']}
+    blocked = set()
+    non_blocking_conflicts = []
+    approved_state_keys = set(states)
+    approved_change_keys = {(c['episode_id'], c['change_id']) for c in context['changes']}
+    for issue in context['conflicts']:
+        state_ids = issue.get('state_ids')
+        if not isinstance(state_ids, list) or not state_ids:
+            raise ValueError(f"状态诊断 {issue.get('code', 'UNKNOWN')} 缺少有效 state_ids，不能安全编译")
+        if not isinstance(issue.get('episode_id'), str) or not issue['episode_id']:
+            raise ValueError(f"状态诊断 {issue.get('code', 'UNKNOWN')} 缺少有效 episode_id，不能安全编译")
+        involved_states = {(issue['episode_id'], state_id) for state_id in state_ids}
+        change_ids = issue.get('change_ids', [])
+        if not isinstance(change_ids, list):
+            raise ValueError(f"状态诊断 {issue.get('code', 'UNKNOWN')} 的 change_ids 格式无效")
+        involved_changes = {(issue['episode_id'], change_id) for change_id in change_ids}
+        # Draft/unreviewed records remain visible as diagnostics but cannot
+        # block independently reviewed material from being compiled.
+        is_approved_conflict = involved_states.issubset(approved_state_keys) and involved_changes.issubset(approved_change_keys)
+        if is_approved_conflict:
+            blocked.update(involved_states)
+        else:
+            non_blocking_conflicts.append({
+                'code': issue.get('code', 'UNKNOWN'),
+                'episode_id': issue['episode_id'],
+                'state_ids': state_ids,
+                'change_ids': change_ids,
+                'reason': '冲突包含未通过审核或未进入可用轨迹的草稿记录；仅作提示，不阻断已审核素材'
+            })
     units, covered, excluded = [], set(), []
     for change in context['changes']:
         keys = [(change['episode_id'], change[k]) for k in ('from_state_id', 'to_state_id')]
@@ -171,7 +213,7 @@ def compile_state_cut(db, sid, gid, as_of, sources_path, target_sec=180, at_sec=
         'series_id': sid, 'selector': {'type': 'character_state', 'id': gid, 'dimension': dimension}, 'title': '人物状态与变化素材候选',
         'sources': {ep: sources[ep] for ep in {c['episode_id'] for c in clips}}, 'clips': clips, 'target_duration_sec': target_sec,
         'estimated_duration_sec': sum(c['end_sec']-c['start_sec'] for c in clips), 'spoiler_guard': context['spoiler_guard'],
-        'character_state_context': selected_context, 'compile_report': {'excluded': excluded, 'skipped_groups': skipped, 'review_status': 'UNREVIEWED', 'warnings': ['素材候选不保证完整成长弧线或最佳审美；需人工补齐连接和反应', '优先级来自审核记录，不由音量或表情自动推断']}}
+        'character_state_context': selected_context, 'compile_report': {'excluded': excluded, 'skipped_groups': skipped, 'non_blocking_conflicts': non_blocking_conflicts, 'review_status': 'UNREVIEWED', 'warnings': ['素材候选不保证完整成长弧线或最佳审美；需人工补齐连接和反应', '优先级来自审核记录，不由音量或表情自动推断', '未审核草稿冲突仅作提示，不阻断已审核素材']}}
     return version(project, 'Character-state story candidate')
 
 

@@ -9,6 +9,8 @@ BASES = {'OBSERVATION', 'EXPLICIT_STATEMENT', 'INTERPRETATION'}
 DIRECT = {'F1_DIRECT', 'F2_CORROBORATED'}
 INFERRED = {'I1_STRONG', 'I2_PLAUSIBLE', 'I3_SPECULATIVE', 'X_INTERPRETATION'}
 STATUSES = {'UNREVIEWED', 'PASS', 'INCORRECT', 'NEED_EVIDENCE', 'DISPUTED'}
+STATE_FIELDS = {'state_id','character_id','dimension','aspect','value','description','basis','certainty','quote','target_character_id','playback_time','audience_available_sec','valid_until_sec','event_ids','evidence_ids','knowledge_ids','review_status','editorial_priority'}
+CHANGE_FIELDS = {'change_id','character_id','from_state_id','to_state_id','playback_time','audience_available_sec','event_ids','evidence_ids','knowledge_ids','review_status','editorial_priority','link_type','reason'}
 
 
 def number(x):
@@ -37,6 +39,9 @@ def validation_errors(data):
                 errors.append(f'{collection} 记录必须为对象'); continue
             label = str(row.get(id_field, collection))
             def error(message): errors.append(f'{label}: {message}')
+            allowed_fields = STATE_FIELDS if collection == 'character_states' else CHANGE_FIELDS
+            unknown_fields = set(row) - allowed_fields
+            if unknown_fields: error('未知字段: ' + ', '.join(sorted(str(x) for x in unknown_fields)))
             if row.get('character_id') not in chars: error('character_id 人物不存在')
             if row.get('review_status', 'UNREVIEWED') not in STATUSES: error('审核状态无效')
             t, available = row.get('playback_time'), row.get('audience_available_sec')
@@ -101,10 +106,51 @@ def validation_errors(data):
                 if left.get('value') == right.get('value'): error('前后状态值相同，不构成状态变化')
                 if row.get('link_type', 'CONTEXT') != 'CONTEXT': error('状态关联事件只表达 CONTEXT，不凭时间先后断言因果')
                 if not refs.get('event_ids'): error('变化需要关联事件 event_ids')
+                # A context event must belong to the transition interval; mere participation elsewhere in the episode is insufficient.
+                if number(left.get('playback_time')) and number(right.get('playback_time')):
+                    for event_id in refs.get('event_ids', []):
+                        event_time = events[event_id].get('playback_time')
+                        if not number(event_time) or event_time < left['playback_time'] or event_time > right['playback_time']:
+                            error(f'关联事件 {event_id} 必须位于前后状态时点之间')
                 if not isinstance(row.get('reason'), str) or not row['reason'].strip(): error('变化需要 reason')
                 if number(available) and any(number(s.get('audience_available_sec')) and s['audience_available_sec'] > available for s in (left, right)): error('变化不能早于前后状态的可见时间')
     return errors
 
+
+
+def state_graph_issues(data, character_id=None, at_sec=None):
+    """Return conservative lifecycle/transition diagnostics scoped by character and optional as-of time."""
+    visible = lambda row: at_sec is None or (number(row.get('playback_time')) and row.get('playback_time') <= at_sec and number(row.get('audience_available_sec')) and row.get('audience_available_sec') <= at_sec)
+    states = [s for s in data.get('character_states', []) if isinstance(s, dict) and (character_id is None or s.get('character_id') == character_id) and visible(s)]
+    state_ids = {s.get('state_id') for s in states}
+    changes = [c for c in data.get('character_state_changes', []) if isinstance(c, dict) and (character_id is None or c.get('character_id') == character_id) and c.get('from_state_id') in state_ids and c.get('to_state_id') in state_ids and visible(c)]
+    issues = []
+    groups = {}
+    for state in states:
+        key = (state.get('character_id'), state.get('dimension'), state.get('aspect'), state.get('target_character_id'))
+        groups.setdefault(key, []).append(state)
+    for key, rows in groups.items():
+        rows.sort(key=lambda x: (x.get('playback_time', -1), x.get('state_id', '')))
+        for i, left in enumerate(rows):
+            left_end = left.get('valid_until_sec')
+            for right in rows[i+1:]:
+                if left_end is None or not number(left_end):
+                    continue
+                if right.get('playback_time', float('inf')) < left_end and left.get('value') != right.get('value'):
+                    issues.append({'code':'OVERLAPPING_STATE_LIFECYCLES','state_ids':[left.get('state_id'),right.get('state_id')],'severity':'WARN','message':'不同状态的有效期重叠；需确认是否为并存、矛盾或失效时间设置错误'})
+    outgoing, incoming = {}, {}
+    for change in changes:
+        a, b = change.get('from_state_id'), change.get('to_state_id')
+        if not a or not b: continue
+        outgoing.setdefault(a, []).append(change.get('change_id'))
+        incoming.setdefault(b, []).append(change.get('change_id'))
+    for state_id, ids in outgoing.items():
+        if len(ids) > 1:
+            issues.append({'code':'STATE_TRANSITION_FORK','state_id':state_id,'state_ids':[state_id],'change_ids':ids,'severity':'WARN','message':'同一状态存在多个后继变化；需人工确认是否为分支叙事或重复建模'})
+    for state_id, ids in incoming.items():
+        if len(ids) > 1:
+            issues.append({'code':'STATE_TRANSITION_MERGE','state_id':state_id,'state_ids':[state_id],'change_ids':ids,'severity':'WARN','message':'多个变化汇入同一状态；需人工确认是否为重复或合流'})
+    return issues
 
 def context_snapshot(data, obj, collection):
     """Capture only dependencies, not the whole episode or subsequent revelations."""

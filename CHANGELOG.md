@@ -112,3 +112,55 @@
 - All candidates remain UNREVIEWED; no face recognition or unsupported identity inference.
 - 104 regression tests pass.
 
+
+
+## v4.3.1 (patch candidate)
+
+- Tighten state-change validation: each linked context event must occur within the inclusive interval between the source and destination state timestamps.
+- Add regression tests for events before, after, and exactly at the transition endpoint.
+- No dossier schema or SQLite migration; existing records remain readable, but invalid transition links must be corrected and re-reviewed.
+- Full repository test/build validation is pending; this patch is published on a dedicated branch for review, not merged to main.
+
+
+## v4.3.1 (patch candidate)
+
+- Require state-change context events to fall within the inclusive source-to-destination state time interval.
+- Add local/global target-character mapping fields to trajectory records; unreviewed or absent mappings remain `UNRESOLVED`. The current one-to-one local mention schema makes `AMBIGUOUS` unreachable, so that status was removed rather than expanding the database model.
+- Add diagnostics for overlapping conflicting state validity intervals and transition graph forks/merges.
+- Add a user-defined character-arc milestone coverage checker; no automatic claim of semantic growth.
+- Added regression coverage for event timing and state graph diagnostics. Full repository validation remains pending.
+
+
+## v4.3.1 WorkBuddy regression fixes (in progress)
+
+- B1: state graph fork/merge diagnostics now expose a consistent `state_ids` field expected by the state-cut compiler.
+- B2: correct the regression fixture to distinguish a timestamp strictly before the source state from the inclusive source-state endpoint; preserve closed-interval semantics.
+- B3: scope state-graph diagnostics to the requested local character in trajectory queries.
+- B4: close the FFmpeg filter-script temporary file before launching the subprocess on Windows, clean it up in `finally`, and preserve stderr in a CLI-friendly error.
+- Added regression tests for B1/B2/B3. B4 still requires Windows execution in the reported environment. B5-B10 are not changed until their full report evidence is available.
+
+- Fix arc integrity coverage to ignore disabled clips and reject unknown plan fields; reject unknown character-state fields in Python validation and JSON Schema.
+- Add regression tests for review downgrade, enabled/disabled arc coverage, unknown fields, unresolved target mappings and Windows-safe FFmpeg temp-file lifecycle.
+
+
+## v4.3.1 validation update
+
+- Fix Windows review-cut temporary filter file lifecycle and UTF-8-safe FFmpeg stderr decoding.
+- Switch single-episode and cross-episode renderers to FFmpeg 7.1+ `-/filter_complex`, addressing FFmpeg 9 removal of `-filter_complex_script` while retaining compatibility with FFmpeg 8.1.
+- Correct the cross-character test fixture so each transition timestamp equals its destination state timestamp.
+- CI result: 175 tests passed on Windows and 175 passed on Ubuntu; Python syntax checks and 12 Web JavaScript blocks/files passed on both; each build produced and verified a 100-file `skill.zip`.
+- B8/B9 remain unassessed because their detailed repro steps were not included in the uploaded WorkBuddy handoff summary; do not infer their fixes.
+
+
+- Clarify N5: the character-state JSON Schema validates candidate import payloads only; the complete dossier example is validated by the Python dossier validator. Schema description, README, SKILL and workflow documentation now state this mapping explicitly.
+
+
+
+## v4.3.1 audit follow-up (CI validated)
+
+- N1: unreviewed/draft lifecycle conflicts remain visible in diagnostics but no longer block independently approved state-change material; approved conflicts remain blocking and malformed diagnostic contracts fail closed.
+- N2: visibility declarations are monotonic; later declarations are audited without replacing an earlier effective episode. Moving an approved visibility episode earlier or later requires explicit `--correct` and is audited.
+- N3: test file IO and captured subprocess text now specify UTF-8 explicitly to avoid locale-dependent failures.
+- N4: PR validation rebuilds and commits the generated `skill.zip`; the canonical Ubuntu PR job checks package/source consistency.
+- N5: schema scope is explicitly documented as candidate payload only; complete dossiers use the Python dossier validator.
+- CI run 41488884867 passed on the current PR HEAD: 179 tests on Ubuntu and Windows, plus a second full Windows release build with `PYTHONUTF8=0`; Python syntax, 12 Web JavaScript blocks/files and 100-file ZIP integrity checks passed.

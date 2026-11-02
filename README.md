@@ -406,3 +406,34 @@ python scripts/serve_review.py --port 8765
 `character_state.py timeline` 按截止集数和集内秒数提供主角轨迹；`compile` 按完整状态变化组提取素材，保留变化两端，生成需要人工批准的新版本。沿用现有 dossier、SQLite episode_payloads、导演、版本与渲染流程，无需重做数据库。
 
 用法、字段、示例和能力边界见 [character-state-workflow.md](references/character-state-workflow.md)。主角身份、状态转变和成片审美仍需人工核实；不宣称自动读心或自动理解完整成长线。
+
+
+## v4.3.1 logic hardening (candidate)
+
+State-change context events are now required to occur within the inclusive interval from the source state timestamp to the destination state timestamp. This prevents an unrelated earlier/later event from being attached to a transition solely because it involves the same character. Existing v4.3 dossiers remain schema-compatible; records that fail the new semantic check must be corrected and re-reviewed.
+
+
+## v4.3.1 state integrity additions
+
+- State-change context events must fall within the inclusive interval between the source and destination state timestamps.
+- Character trajectories expose both `local_target_character_id` and a `global_target_character_id` only when exactly one reviewed mapping exists; otherwise the target identity remains `UNRESOLVED` (the current schema enforces one mapping per local character, so `AMBIGUOUS` is not a reachable state).
+- `state_graph_issues()` reports overlapping conflicting validity intervals and transition forks/merges as warnings; these are diagnostics, not automatic psychological-state inference.
+- `scripts/character_arc_integrity.py` checks user-defined required milestones against state/change/event coverage in enabled clips only; it rejects unknown plan fields. It does not decide what constitutes character growth.
+
+
+### v4.3.1 verification status
+
+The dedicated patch branch is validated by GitHub Actions on Ubuntu and Windows: 175 tests passed on each OS; Python syntax checks and 12 Web JavaScript blocks/files passed; `build_release.py` produced and integrity-checked a 100-file `skill.zip`. Rendering uses FFmpeg's file-backed `-/filter_complex` option (FFmpeg 7.1+), which is compatible with the repository's FFmpeg 8.1 baseline and FFmpeg 9. The patch remains a PR until reviewed/merged.
+
+
+### Character-state JSON Schema scope
+
+`references/character-state.schema.json` validates only the **candidate import payload** (`episode_id`, `character_states`, `character_state_changes`). It is not a schema for a complete episode dossier. `examples/character-state-candidates.example.json` is the matching candidate payload example. `examples/character-state-base.example.json` is a complete dossier example and is validated by `scripts/dossier_v3.py` / the Python business validator, not by the candidate-only JSON Schema. Cross-record references, review snapshots and temporal constraints are also enforced by Python.
+
+
+## v4.3.1 audit follow-up fixes (CI validated)
+
+- State graph conflicts involving unreviewed/draft records remain visible as non-blocking diagnostics and no longer exclude independently approved state-change material. Conflicts whose referenced states and changes are all approved remain blocking.
+- Repeated visibility declarations are monotonic: a later episode declaration is audited but does not replace an earlier effective episode. Changing an already approved visibility episode earlier or later requires the explicit `--correct` option and an audit entry.
+- Tests use explicit UTF-8 for file IO and captured subprocess text instead of relying on Windows locale defaults.
+- The pull-request validation workflow rebuilds and commits `skill.zip` from current source; the canonical Ubuntu PR job verifies package/source consistency. Windows CI also runs the full release build with Python UTF-8 mode disabled.

@@ -28,9 +28,17 @@
 
 “握拳、停顿、说出‘我要查清楚’”可记为观察或明确陈述；“绝望、决心复仇”需要相应依据，解释性判断必须保留 INTERPRETATION。本版保留审核过的解释记录，但不将其用于自动素材筛选。语言校验不能证明说话人或动机正确，仍须回看连续原片。
 
-变化记录引用同人物、维度、aspect、关系对象的 from_state_id/to_state_id；后者时点必须更晚且值不同。变化时间等于后状态时间。event_ids 表示关联上下文，link_type 只允许 CONTEXT，**不把先后出现当作事件导致心理变化的证明**。跨集轨迹按各集记录排列；本版不自动建立跨集状态因果边。
+变化记录引用同人物、维度、aspect、关系对象的 from_state_id/to_state_id；后者时点必须更晚且值不同。变化时间等于后状态时间。event_ids 表示关联上下文，link_type 只允许 CONTEXT，**不把先后出现当作事件导致心理变化的证明**。跨集轨迹按各集记录排列；本版不自动建立跨集状态因果边。每个分集人物在现有 `character_mentions` 主键约束下只对应一个全局人物 ID；映射未审核时输出 `UNRESOLVED`，不使用不可达的 `AMBIGUOUS` 状态。
 
 JSON 结构见 `references/character-state.schema.json`。跨引用、时序、证据归属与审核有效性以 Python 校验为准。
+
+## 人物成长弧完整性检查
+
+`character_arc_integrity.py` 只按用户明确列出的里程碑检查剪辑覆盖，并且只统计 `enabled` 不为 `false` 的片段。计划字段采用显式 allowlist，未知字段会报错，避免拼写错误被静默忽略。
+
+```bash
+python scripts/character_arc_integrity.py work/state-cut.json work/arc-plan.json work/arc-integrity.json
+```
 
 ## 1. 导入候选
 
@@ -112,3 +120,46 @@ python scripts/review_cut.py work/hero-approved.json output/hero-cut-001
 ## 能力边界
 
 本版新增的是证据化状态记录、审核、时点检索和保守素材编译，没有新增人脸识别、情绪识别、自动读心或全自动人物成长分析。知识仍由原 knowledge_states 管理，状态层引用其 ID，不覆写原认知事实。完整视频理解、人物动机、状态转变语义和成片审美依然需要 ChatGPT 结合连续素材及人工审核。
+
+
+## v4.3.1 逻辑校验补充
+
+状态变化的 `event_ids` 必须指向前后状态时间之间的事件（包含两个端点）。事件时间符合区间只是上下文一致性，不证明事件导致状态变化。
+
+跨集关系状态输出同时保留分集 `local_target_character_id`，并在当前集该人物映射到唯一且审核通过的全局人物时输出 `global_target_character_id`。没有唯一审核映射时不进行合并。
+
+状态图诊断会报告不同状态有效期重叠、同一状态多个后继（fork）或多个前驱汇入（merge）。这些是待审核警告；状态可能并存，不能仅凭重叠认定数据错误。
+
+人物成长弧完整性使用用户明确提供的里程碑清单，例如 `milestones[]` 中列出 `episode_id`、`required_state_ids` 和 `required_change_ids`。运行：
+
+```bash
+python scripts/character_arc_integrity.py work/state-cut.json work/arc-plan.json work/arc-integrity.json
+```
+
+该检查只核对指定里程碑及其事件素材是否进入剪辑工程，不替代人工判断成长意义、因果和叙事质量。
+
+
+## v4.3.1 渲染兼容与验证
+
+渲染器使用 FFmpeg 7.1+ 文件输入形式 `-/filter_complex FILTER_FILE`，避免 FFmpeg 9 移除旧的 `-filter_complex_script` 参数。当前基线 FFmpeg 8.1 与 FFmpeg 9 均已在 Windows/Ubuntu CI 构建中验证。
+
+v4.3.1 修复分支的完整构建结果：Windows 175 项测试通过，Ubuntu 175 项测试通过；Python 语法、12 个 Web JavaScript 块/文件及 100 文件 ZIP 完整性均通过。
+
+## Schema 适用范围
+
+`references/character-state.schema.json` 是候选导入载荷 Schema，不是完整 episode dossier Schema。`character-state-candidates.example.json` 对应该 Schema；`character-state-base.example.json` 是完整 dossier，应由 `scripts/dossier_v3.py` 的 Python 校验器校验。不要把完整 dossier 直接送入候选载荷 Schema 并将预期失败误报为档案无效。
+
+
+## 可见性声明重复与纠正
+
+同一实体已经存在可见性声明时，较晚集数的重复声明只记录审计，不覆盖更早的有效集数。若要修改已审核的生效集数（提前会扩大可见范围，延后会收紧可见范围），必须显式确认并使用 `--correct`：
+
+```bash
+python scripts/series_visibility.py work/series.sqlite --series-id SERIES01 --entity-type character --entity-id GLOBAL_CHAR01 --known-by-episode EP010 --evidence-ref EP010:EVD001 --reason "复核后确认第10集已揭晓" --reviewer editor --correct
+```
+
+该纠正会写入 `CORRECT_VISIBLE_EARLIER` 审计动作。未提供 `--correct` 时拒绝提前可见性声明。
+
+## 状态图冲突与草稿
+
+涉及未审核草稿的状态图冲突会保留在诊断中，但不应自动阻断其他已通过审核的状态变化素材。只有冲突涉及的状态和变化均已进入可用审核轨迹时，才作为编译阻断项。

@@ -54,6 +54,26 @@ def map_report(project, report):
     return out
 
 
+
+def run_ffmpeg_with_filter_script(cmd, filters):
+    """Write filter script, close it before FFmpeg opens it, and always clean it up."""
+    script_path = None
+    try:
+        with tempfile.NamedTemporaryFile('w', suffix='.ffscript', encoding='utf-8', delete=False) as f:
+            f.write(filters)
+            f.flush()
+            script_path = f.name
+        render_cmd = [script_path if x == 'FILTER_FILE' else x for x in cmd]
+        try:
+            subprocess.run(render_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace')
+        except subprocess.CalledProcessError as exc:
+            detail = (exc.stderr or exc.stdout or str(exc))[-4000:]
+            raise ValueError(f"FFmpeg 渲染失败（退出码 {exc.returncode}）：\n{detail}") from exc
+    finally:
+        if script_path:
+            Path(script_path).unlink(missing_ok=True)
+
+
 def render_review(project, directory, width=1920, height=1080, fps=30):
     require_approved(project)
     qc = continuity_qc(project)
@@ -63,9 +83,7 @@ def render_review(project, directory, width=1920, height=1080, fps=30):
     cmd, filters = build_command(project, root/'final.mp4', width=width, height=height, fps=fps)
     root.mkdir(parents=True, exist_ok=False)
     write_new(root/'project.json', project)
-    with tempfile.NamedTemporaryFile('w', suffix='.ffscript', encoding='utf-8') as f:
-        f.write(filters); f.flush()
-        subprocess.run([f.name if x == 'FILTER_FILE' else x for x in cmd], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    run_ffmpeg_with_filter_script(cmd, filters)
     report = map_report(project, inspect_video(root/'final.mp4'))
     frames = []
     for i, row in enumerate(report['timeline']):

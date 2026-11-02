@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Render multi-source cross-episode projects with FFmpeg."""
 from __future__ import annotations
-import argparse,json,shutil,subprocess,tempfile
+import argparse,json,shutil,subprocess,tempfile,sys
 from pathlib import Path
 from typing import Any
 
@@ -73,10 +73,14 @@ def build_command(project,output,crf=20,preset='medium',width=1920,height=1080,f
     filter_text=build_filter(clips,indices,flags,width,height,fps)
     cmd=[ffmpeg,'-hide_banner','-y']
     for src in sources:cmd += ['-i',src]
-    cmd += ['-filter_complex_script','FILTER_FILE','-map','[outv]','-map','[outa]','-c:v','libx264','-preset',preset,'-crf',str(crf),'-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-ar','48000','-ac','2','-movflags','+faststart',str(output)]
+    cmd += ['-/filter_complex','FILTER_FILE','-map','[outv]','-map','[outa]','-c:v','libx264','-preset',preset,'-crf',str(crf),'-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-ar','48000','-ac','2','-movflags','+faststart',str(output)]
     return cmd,filter_text
 
 def main():
+    # Keep Chinese CLI messages printable on legacy Windows code pages.
+    for stream in (sys.stdout,sys.stderr):
+        try:stream.reconfigure(errors='backslashreplace')
+        except (AttributeError,OSError):pass
     p=argparse.ArgumentParser(description='跨集多源剪辑项目 MP4 渲染器')
     p.add_argument('project');p.add_argument('output');p.add_argument('--crf',type=int,default=20);p.add_argument('--preset',default='medium');p.add_argument('--width',type=int,default=1920);p.add_argument('--height',type=int,default=1080);p.add_argument('--fps',type=int,default=30);p.add_argument('--dry-run',action='store_true')
     a=p.parse_args()
@@ -87,9 +91,24 @@ def main():
             print('# filter graph\n'+flt+'\n# command\n'+' '.join(cmd));return
         out=Path(a.output);out.parent.mkdir(parents=True,exist_ok=True)
         with tempfile.NamedTemporaryFile('w',suffix='.ffscript',encoding='utf-8',delete=False) as f:f.write(flt);fp=f.name
-        try:subprocess.run([fp if x=='FILTER_FILE' else x for x in cmd],check=True)
+        try:
+            try:
+                subprocess.run([fp if x=='FILTER_FILE' else x for x in cmd],check=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8',errors='replace')
+            except subprocess.CalledProcessError as exc:
+                detail=(exc.stderr or exc.stdout or str(exc))[-6000:]
+                raise RuntimeError(f"FFmpeg 渲染失败（退出码 {exc.returncode}）：\\n{detail}") from exc
         finally:Path(fp).unlink(missing_ok=True)
         print(f'跨集成片渲染完成: {out}')
-    except Exception as e:raise SystemExit(f'渲染失败: {e}')
+    except Exception as e:
+        message=f'渲染失败: {e}'
+        try:
+            sys.stderr.write(message+'\\n')
+        except UnicodeEncodeError:
+            stream=getattr(sys.stderr,'buffer',None)
+            if stream is not None:
+                stream.write((message+'\\n').encode(sys.stderr.encoding or 'utf-8',errors='backslashreplace'))
+            else:
+                sys.stderr.write(message.encode('ascii',errors='backslashreplace').decode('ascii')+'\\n')
+        raise SystemExit(1)
 if __name__=='__main__':main()
 

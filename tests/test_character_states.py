@@ -44,6 +44,11 @@ class StateModelTests(unittest.TestCase):
         self.assertEqual(validate(d),[])
         self.assertEqual(migrate_to_v35(d)['character_states'],[])
 
+    def test_unknown_character_state_field_is_rejected(self):
+        d=fixture()
+        d['character_states'][0]['playback_tim'] = 11
+        self.assertTrue(any('未知字段' in err and 'playback_tim' in err for err in validate(d)))
+
     def test_records_validate_and_have_review_context(self):
         d=reviewed(fixture());self.assertEqual(validate(d),[])
         self.assertTrue(all(usable(d,s) for s in d['character_states']))
@@ -61,6 +66,17 @@ class StateModelTests(unittest.TestCase):
         self.assertEqual(d,before)
         payload['episode_id']='OTHER'
         with self.assertRaises(ValueError):import_candidates(d,payload)
+
+    def test_downgrading_pass_invalidates_state_and_dependent_change(self):
+        d=reviewed(fixture())
+        self.assertTrue(usable(d,d['character_states'][0]))
+        self.assertTrue(usable(d,d['character_state_changes'][0],'character_state_changes'))
+        downgraded=reviewed_dossier(d,'S1','NEED_EVIDENCE','台词上下文仍需复核','editor',source_checked=True)
+        state=next(x for x in downgraded['character_states'] if x['state_id']=='S1')
+        change=downgraded['character_state_changes'][0]
+        self.assertFalse(usable(downgraded,state))
+        self.assertFalse(usable(downgraded,change,'character_state_changes'))
+        self.assertEqual(downgraded['review_history'][-1]['status'],'NEED_EVIDENCE')
 
     def test_state_pass_requires_reviewer_and_source_check(self):
         d=fixture();before=copy.deepcopy(d)
@@ -105,6 +121,26 @@ class StateModelTests(unittest.TestCase):
         d['knowledge_states'][0]['playback_time']=40
         self.assertTrue(any('未来认知' in err for err in validate(d)))
 
+    def test_change_event_strictly_before_source_state_is_rejected(self):
+        d=fixture()
+        d['events'][0]['playback_time']=10.5
+        d['character_state_changes'][0]['event_ids']=['E1']
+        self.assertTrue(any('必须位于前后状态时点之间' in err for err in validate(d)))
+
+    def test_change_event_at_source_state_endpoint_is_allowed(self):
+        d=fixture()
+        d['events'][0]['playback_time']=11
+        d['character_state_changes'][0]['event_ids']=['E1']
+        self.assertFalse(any('必须位于前后状态时点之间' in err for err in validate(d)))
+        d=fixture()
+        d['character_state_changes'][0]['event_ids']=['E3']
+        self.assertTrue(any('必须位于前后状态时点之间' in err for err in validate(d)))
+
+    def test_change_event_at_transition_endpoint_is_allowed(self):
+        d=fixture()
+        # E2 occurs at 31s, exactly the destination state time.
+        self.assertEqual(validate(d),[])
+
     def test_change_not_cause_or_reverse_timeline(self):
         d=fixture();d['character_state_changes'][0]['link_type']='CAUSES'
         self.assertTrue(any('不凭时间先后' in err for err in validate(d)))
@@ -119,11 +155,25 @@ class StateModelTests(unittest.TestCase):
     def test_browser_dossier_review_export_is_consumable(self):
         d=fixture()
         js="const a=require('./web/character-state-review.js');let d=JSON.parse(require('fs').readFileSync(0,'utf8'));for(const [c,f] of [['character_states','state_id'],['character_state_changes','change_id']])for(const o of d[c])d=a.review(d,c,o[f],'PASS','reviewed source','web-editor',true);process.stdout.write(JSON.stringify(d));"
-        result=subprocess.run(['node','-e',js],input=json.dumps(d),cwd=ROOT,text=True,capture_output=True,check=True)
+        result=subprocess.run(['node','-e',js],input=json.dumps(d),cwd=ROOT,text=True,encoding='utf-8',errors='replace',capture_output=True,check=True)
         d=json.loads(result.stdout)
         self.assertEqual(validate(d),[])
         self.assertTrue(all(usable(d,s) for s in d['character_states']))
         self.assertTrue(usable(d,d['character_state_changes'][0],'character_state_changes'))
+
+
+    def test_state_graph_fork_issue_exposes_state_ids_for_compiler(self):
+        from character_state_model import state_graph_issues
+        d=fixture()
+        s3={**d['character_states'][1],'state_id':'S3','value':'离开','playback_time':41,'audience_available_sec':42,'quote':'我要亲自查清楚','event_ids':['E2'],'evidence_ids':['V2']}
+        d['character_states'].append(s3)
+        c2={**d['character_state_changes'][0],'change_id':'CH2','to_state_id':'S3','playback_time':41,'audience_available_sec':42,'event_ids':['E2']}
+        d['character_state_changes'].append(c2)
+        issues=state_graph_issues(d)
+        fork=next(x for x in issues if x['code']=='STATE_TRANSITION_FORK')
+        self.assertIn('state_ids',fork)
+        self.assertEqual(fork['state_ids'],['S1'])
+
 
 
 class StateSeriesTests(unittest.TestCase):
@@ -135,7 +185,7 @@ class StateSeriesTests(unittest.TestCase):
         try:self.gid=c.execute("SELECT global_character_id FROM character_mentions WHERE series_id='SER' AND episode_id='EP001' AND local_character_id='A'").fetchone()[0]
         finally:c.close()
         declare_visible(self.db,'SER','character',self.gid,'EP001',['EP001:V1'],'early public identity','editor')
-        video=self.root/'video.mp4';video.write_bytes(b'placeholder');self.sources=self.root/'sources.json';self.sources.write_text(json.dumps({'EP001':str(video)}))
+        video=self.root/'video.mp4';video.write_bytes(b'placeholder');self.sources=self.root/'sources.json';self.sources.write_text(json.dumps({'EP001':str(video)}),encoding='utf-8')
     def tearDown(self):self.tmp.cleanup()
     def timeline(self,as_of='1',at_sec=None):
         c=connect(self.db)
@@ -144,6 +194,76 @@ class StateSeriesTests(unittest.TestCase):
     def replace(self,d):
         save_atomic(d,self.path);import_dossier(self.db,'SER',self.path,replace=True)
         declare_visible(self.db,'SER','character',self.gid,'EP001',['EP001:V1'],'current identity evidence','editor')
+
+    def test_trajectory_state_graph_diagnostics_are_scoped_to_requested_character(self):
+        d=copy.deepcopy(self.d)
+        b1={**d['character_states'][0],'state_id':'B1','character_id':'B','value':'保护同伴'}
+        b2={**d['character_states'][1],'state_id':'B2','character_id':'B','value':'离开同伴','playback_time':31,'audience_available_sec':32}
+        b3={**d['character_states'][1],'state_id':'B3','character_id':'B','value':'寻找同伴','playback_time':41,'audience_available_sec':42}
+        d['character_states'].extend([b1,b2,b3])
+        cb1={**d['character_state_changes'][0],'change_id':'BC1','character_id':'B','from_state_id':'B1','to_state_id':'B2'}
+        cb2={**cb1,'change_id':'BC2','to_state_id':'B3','playback_time':41,'audience_available_sec':42}
+        d['character_state_changes'].extend([cb1,cb2])
+        d['review_history']=[]
+        for collection,field in [('character_states','state_id'),('character_state_changes','change_id')]:
+            for row in d[collection]:
+                add_review(d,row[field],'PASS','审核状态与证据',reviewer='editor',source_checked=True)
+        self.replace(d)
+        result=self.timeline()
+        self.assertFalse(any(x.get('code')=='STATE_TRANSITION_FORK' for x in result['conflicts']))
+
+    def test_fork_diagnostic_does_not_crash_state_cut_compiler(self):
+        d=copy.deepcopy(self.d)
+        s3={**d['character_states'][1],'state_id':'S3','value':'离开同伴','playback_time':41,'audience_available_sec':42}
+        d['character_states'].append(s3)
+        add_review(d,'S3','PASS','核对状态证据',reviewer='editor',source_checked=True)
+        c2={**d['character_state_changes'][0],'change_id':'CH2','to_state_id':'S3','playback_time':41,'audience_available_sec':42}
+        d['character_state_changes'].append(c2)
+        add_review(d,'CH2','PASS','核对变化上下文',reviewer='editor',source_checked=True)
+        self.replace(d)
+        result=self.timeline()
+        fork=next(x for x in result['conflicts'] if x.get('code')=='STATE_TRANSITION_FORK')
+        self.assertEqual(fork['state_ids'],['S1'])
+        with self.assertRaisesRegex(ValueError,'没有完整'):
+            compile_state_cut(self.db,'SER',self.gid,'1',self.sources)
+
+    def test_state_graph_diagnostics_respect_intra_episode_cutoff(self):
+        d=copy.deepcopy(self.d)
+        s3={**d['character_states'][1],'state_id':'S3','value':'离开同伴','playback_time':41,'audience_available_sec':42}
+        d['character_states'].append(s3)
+        add_review(d,'S3','PASS','核对状态证据',reviewer='editor',source_checked=True)
+        c2={**d['character_state_changes'][0],'change_id':'CH2','to_state_id':'S3','playback_time':41,'audience_available_sec':42}
+        d['character_state_changes'].append(c2)
+        add_review(d,'CH2','PASS','核对变化上下文',reviewer='editor',source_checked=True)
+        self.replace(d)
+        early=self.timeline(at_sec=20)
+        self.assertFalse(any(x.get('code')=='STATE_TRANSITION_FORK' for x in early['conflicts']))
+        late=self.timeline(at_sec=50)
+        self.assertTrue(any(x.get('code')=='STATE_TRANSITION_FORK' for x in late['conflicts']))
+
+    def test_compiler_rejects_malformed_state_conflict_without_keyerror(self):
+        from unittest.mock import patch
+        with patch('character_state.state_graph_issues', return_value=[{'code':'BROKEN_DIAGNOSTIC','severity':'WARN'}]):
+            with self.assertRaisesRegex(ValueError,'缺少有效 state_ids'):
+                compile_state_cut(self.db,'SER',self.gid,'1',self.sources)
+
+    def test_unreviewed_target_mapping_stays_unresolved_not_ambiguous(self):
+        d=copy.deepcopy(self.d)
+        relationship={**d['character_states'][0],'state_id':'S3','dimension':'relationship','aspect':'trust','value':'信任同伴','description':'主角明确表达信任','target_character_id':'B','playback_time':15,'audience_available_sec':16,'event_ids':['E1'],'evidence_ids':['V1']}
+        d['character_states'].append(relationship)
+        d['review_history']=[]
+        self.replace(reviewed(d))
+        c=connect(self.db)
+        try:
+            c.execute("UPDATE character_mentions SET review_status='NEED_EVIDENCE' WHERE series_id='SER' AND episode_id='EP001' AND local_character_id='B'")
+            c.commit()
+        finally:c.close()
+        result=self.timeline()
+        target=next(x for x in result['states'] if x['state_id']=='S3')
+        self.assertEqual(target['local_target_character_id'],'B')
+        self.assertIsNone(target['global_target_character_id'])
+        self.assertEqual(target['target_identity_status'],'UNRESOLVED')
+        self.assertNotEqual(target['target_identity_status'],'AMBIGUOUS')
 
     def test_cutoff_time_excludes_future_state_and_change(self):
         result=self.timeline(at_sec=20)
@@ -217,6 +337,18 @@ class StateSeriesTests(unittest.TestCase):
         d=copy.deepcopy(self.d);d['character_states'][1]['valid_until_sec']=35;d['review_history']=[];self.replace(reviewed(d))
         self.assertEqual(self.timeline(at_sec=40)['latest_in_cutoff_episode'],[])
 
+    def test_unreviewed_overlapping_draft_does_not_block_approved_change(self):
+        d=fixture()
+        d['character_states'][0]['valid_until_sec']=25
+        d=reviewed(d)
+        draft={**d['character_states'][0],'state_id':'S1X','value':'开始怀疑同伴','description':'未审核草稿状态','playback_time':20,'audience_available_sec':21,'valid_until_sec':24,'event_ids':['E1'],'review_status':'UNREVIEWED'}
+        d['character_states'].append(draft)
+        self.replace(d)
+        result=compile_state_cut(self.db,'SER',self.gid,'1',self.sources,target_sec=100)
+        self.assertTrue(result['clips'])
+        conflicts=result['compile_report']['non_blocking_conflicts']
+        self.assertTrue(any('S1X' in x['state_ids'] for x in conflicts))
+
     def test_conflicts_block_automatic_change_selection(self):
         d=copy.deepcopy(self.d);s={**d['character_states'][0],'state_id':'S1_ALT','value':'另一个冲突目标'};d['character_states'].append(s);d['review_history']=[];self.replace(reviewed(d))
         self.assertTrue(self.timeline()['conflicts'])
@@ -234,7 +366,7 @@ class StateSeriesTests(unittest.TestCase):
         from story_arc_compiler import make_prompt
         output=self.root/'prompt.txt'
         make_prompt(self.db,'SER','character',self.gid,'整理主角目标变化',output,max_episode_number=1)
-        text=output.read_text()
+        text=output.read_text(encoding='utf-8')
         self.assertIn('character_state_context',text)
         self.assertIn('信任同伴并等待',text)
         self.assertIn('不把 CONTEXT 事件关联写成因果',text)
@@ -244,7 +376,7 @@ class StateSeriesTests(unittest.TestCase):
         from review_cut import render_review
         video=self.root/'real.mp4'
         subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=blue:s=160x120:d=100:r=12','-an','-c:v','libx264','-pix_fmt','yuv420p',str(video)],check=True)
-        self.sources.write_text(json.dumps({'EP001':str(video)}))
+        self.sources.write_text(json.dumps({'EP001':str(video)}),encoding='utf-8')
         project=compile_state_cut(self.db,'SER',self.gid,'1',self.sources,target_sec=20,at_sec=40)
         project=approve(project,'editor','核对状态两端和台词上下文')
         result=render_review(project,self.root/'rendered',width=160,height=120,fps=12)
@@ -256,7 +388,7 @@ class StateSeriesTests(unittest.TestCase):
     def test_cli_review_and_timeline_output(self):
         script=str(ROOT/'scripts/character_state.py');out=self.root/'timeline.json'
         subprocess.run([sys.executable,script,'timeline',str(self.db),str(out),'--series-id','SER','--character',self.gid,'--as-of','1','--at-sec','20'],check=True,capture_output=True)
-        self.assertEqual(len(json.loads(out.read_text())['states']),1)
+        self.assertEqual(len(json.loads(out.read_text(encoding='utf-8'))['states']),1)
         result=subprocess.run([sys.executable,script,'timeline',str(self.db),str(out),'--series-id','SER','--character',self.gid,'--as-of','1'],capture_output=True)
         self.assertNotEqual(result.returncode,0)
 
