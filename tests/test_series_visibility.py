@@ -65,8 +65,9 @@ class SeriesVisibilityTests(unittest.TestCase):
 
     def test_moving_visibility_later_requires_explicit_correction(self):
         declare_visible(self.db,'S1','character',self.gid,'EP001',['EP001:EVD1'],'最初声明第1集已知','tester')
-        with self.assertRaisesRegex(ValueError,'必须显式使用 --correct'):
-            declare_visible(self.db,'S1','character',self.gid,'EP002',['EP001:EVD1'],'纠正为第2集才已知','tester')
+        later=declare_visible(self.db,'S1','character',self.gid,'EP002',['EP001:EVD1'],'再次提交第2集证据','tester')
+        self.assertEqual(later['effective_episode_number'],1)
+        self.assertTrue(later['effective_retained'])
         corrected=declare_visible(self.db,'S1','character',self.gid,'EP002',['EP001:EVD1'],'经复核纠正为第2集才已知','tester',correct=True)
         self.assertEqual(corrected['effective_episode_number'],2)
         c=connect(self.db)
