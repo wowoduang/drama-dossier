@@ -38,6 +38,31 @@ class SeriesVisibilityTests(unittest.TestCase):
         finally:c.close()
         self.assertEqual(memory['series_visibility'][0]['entity_id'],self.gid)
         self.assertEqual(len(memory['visibility_audit']),1)
+    def test_later_visibility_declaration_does_not_overwrite_earlier_effective_episode(self):
+        first=declare_visible(self.db,'S1','character',self.gid,'EP001',['EP001:EVD1'],'第1集已经公开身份','tester')
+        later=declare_visible(self.db,'S1','character',self.gid,'EP002',['EP001:EVD1'],'第2集再次确认身份','tester')
+        self.assertEqual(first['effective_episode_number'],1)
+        self.assertEqual(later['effective_episode_number'],1)
+        self.assertTrue(later['effective_retained'])
+        c=connect(self.db)
+        try:
+            row=c.execute('SELECT effective_episode_number FROM series_visibility WHERE series_id=? AND entity_id=?',( 'S1',self.gid)).fetchone()
+            actions=[x[0] for x in c.execute('SELECT action FROM visibility_audit WHERE series_id=? AND entity_id=? ORDER BY created_at',( 'S1',self.gid)).fetchall()]
+        finally:c.close()
+        self.assertEqual(row[0],1)
+        self.assertIn('DECLARE_VISIBLE_LATER_IGNORED',actions)
+
+    def test_moving_visibility_earlier_requires_explicit_correction(self):
+        declare_visible(self.db,'S1','character',self.gid,'EP002',['EP001:EVD1'],'暂按第2集确认','tester')
+        with self.assertRaisesRegex(ValueError,'必须显式使用 --correct'):
+            declare_visible(self.db,'S1','character',self.gid,'EP001',['EP001:EVD1'],'纠正为第1集已知','tester')
+        corrected=declare_visible(self.db,'S1','character',self.gid,'EP001',['EP001:EVD1'],'经复核纠正为第1集已知','tester',correct=True)
+        self.assertEqual(corrected['effective_episode_number'],1)
+        c=connect(self.db)
+        try:action=c.execute('SELECT action FROM visibility_audit WHERE series_id=? AND entity_id=? ORDER BY created_at DESC LIMIT 1',( 'S1',self.gid)).fetchone()[0]
+        finally:c.close()
+        self.assertEqual(action,'CORRECT_VISIBLE_EARLIER')
+
     def test_visibility_cannot_use_future_episode_evidence(self):
         with self.assertRaisesRegex(ValueError,'不能晚于声明集数'):
             declare_visible(self.db,'S1','character',self.gid,'EP001',['EP002:EVD9'],'未来证据不能证明第1集已知')
