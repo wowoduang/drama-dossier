@@ -126,7 +126,12 @@ def compile_state_cut(db, sid, gid, as_of, sources_path, target_sec=180, at_sec=
     finally: connection.close()
     sources = load_sources(sources_path)
     states = {(s['episode_id'], s['state_id']): s for s in context['states']}
-    blocked = {(x['episode_id'], sid_) for x in context['conflicts'] for sid_ in x['state_ids']}
+    blocked = set()
+    for issue in context['conflicts']:
+        state_ids = issue.get('state_ids')
+        if not isinstance(state_ids, list) or not state_ids:
+            raise ValueError(f"状态诊断 {issue.get('code', 'UNKNOWN')} 缺少有效 state_ids，不能安全编译")
+        blocked.update((issue['episode_id'], state_id) for state_id in state_ids)
     units, covered, excluded = [], set(), []
     for change in context['changes']:
         keys = [(change['episode_id'], change[k]) for k in ('from_state_id', 'to_state_id')]
