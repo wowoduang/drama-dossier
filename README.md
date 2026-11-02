@@ -411,3 +411,11 @@ python scripts/serve_review.py --port 8765
 ## v4.3.1 logic hardening (candidate)
 
 State-change context events are now required to occur within the inclusive interval from the source state timestamp to the destination state timestamp. This prevents an unrelated earlier/later event from being attached to a transition solely because it involves the same character. Existing v4.3 dossiers remain schema-compatible; records that fail the new semantic check must be corrected and re-reviewed.
+
+
+## v4.3.1 state integrity additions
+
+- State-change context events must fall within the inclusive interval between the source and destination state timestamps.
+- Character trajectories expose both `local_target_character_id` and a `global_target_character_id` only when exactly one reviewed mapping exists; otherwise the target identity remains unresolved/ambiguous.
+- `state_graph_issues()` reports overlapping conflicting validity intervals and transition forks/merges as warnings; these are diagnostics, not automatic psychological-state inference.
+- `scripts/character_arc_integrity.py` checks user-defined required milestones against state/change/event coverage in a compiled project. It does not decide what constitutes character growth.
