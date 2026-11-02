@@ -29,6 +29,7 @@
   "$defs": {
     "state": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "state_id",
         "character_id",
@@ -154,6 +155,7 @@
     },
     "change": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "change_id",
         "character_id",
