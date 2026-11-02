@@ -53,7 +53,7 @@ jobs:
             gh workflow run v431-validation.yml --ref fix/v4.3.1-state-logic
           fi
       - name: Verify committed package matches source
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && matrix.os == 'ubuntu-latest'
         run: git diff --exit-code -- skill.zip
       - name: Windows default-encoding regression
         if: runner.os == 'Windows'
