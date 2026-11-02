@@ -113,11 +113,12 @@ def validation_errors(data):
 
 
 
-def state_graph_issues(data, character_id=None):
-    """Return conservative lifecycle/transition diagnostics; optionally scope to one local character."""
-    states = [s for s in data.get('character_states', []) if isinstance(s, dict) and (character_id is None or s.get('character_id') == character_id)]
+def state_graph_issues(data, character_id=None, at_sec=None):
+    """Return conservative lifecycle/transition diagnostics scoped by character and optional as-of time."""
+    visible = lambda row: at_sec is None or (number(row.get('playback_time')) and row.get('playback_time') <= at_sec and number(row.get('audience_available_sec')) and row.get('audience_available_sec') <= at_sec)
+    states = [s for s in data.get('character_states', []) if isinstance(s, dict) and (character_id is None or s.get('character_id') == character_id) and visible(s)]
     state_ids = {s.get('state_id') for s in states}
-    changes = [c for c in data.get('character_state_changes', []) if isinstance(c, dict) and (character_id is None or (c.get('character_id') == character_id and c.get('from_state_id') in state_ids and c.get('to_state_id') in state_ids))]
+    changes = [c for c in data.get('character_state_changes', []) if isinstance(c, dict) and (character_id is None or c.get('character_id') == character_id) and c.get('from_state_id') in state_ids and c.get('to_state_id') in state_ids and visible(c)]
     issues = []
     groups = {}
     for state in states:
