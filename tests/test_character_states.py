@@ -105,6 +105,19 @@ class StateModelTests(unittest.TestCase):
         d['knowledge_states'][0]['playback_time']=40
         self.assertTrue(any('未来认知' in err for err in validate(d)))
 
+    def test_change_event_must_fall_inside_transition_interval(self):
+        d=fixture()
+        d['character_state_changes'][0]['event_ids']=['E1']
+        self.assertTrue(any('必须位于前后状态时点之间' in err for err in validate(d)))
+        d=fixture()
+        d['character_state_changes'][0]['event_ids']=['E3']
+        self.assertTrue(any('必须位于前后状态时点之间' in err for err in validate(d)))
+
+    def test_change_event_at_transition_endpoint_is_allowed(self):
+        d=fixture()
+        # E2 occurs at 31s, exactly the destination state time.
+        self.assertEqual(validate(d),[])
+
     def test_change_not_cause_or_reverse_timeline(self):
         d=fixture();d['character_state_changes'][0]['link_type']='CAUSES'
         self.assertTrue(any('不凭时间先后' in err for err in validate(d)))
