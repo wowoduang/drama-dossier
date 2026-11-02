@@ -153,3 +153,14 @@
 
 
 - Clarify N5: the character-state JSON Schema validates candidate import payloads only; the complete dossier example is validated by the Python dossier validator. Schema description, README, SKILL and workflow documentation now state this mapping explicitly.
+
+
+
+## v4.3.1 audit follow-up (pending cross-platform CI)
+
+- N1: unreviewed/draft lifecycle conflicts remain visible in diagnostics but no longer block independently approved state-change material; approved conflicts remain blocking and malformed diagnostic contracts fail closed.
+- N2: visibility declarations are monotonic; later declarations are audited without replacing an earlier effective episode. Moving visibility earlier requires explicit `--correct` and is audited.
+- N3: test file IO and captured subprocess text now specify UTF-8 explicitly to avoid locale-dependent failures.
+- N4: validation workflow refreshes and commits the generated `skill.zip`, then dispatches a second validation run for the new HEAD; workflow-dispatch validation checks package/source consistency.
+- N5: schema scope is explicitly documented as candidate payload only; complete dossiers use the Python dossier validator.
+- CI validation is pending; do not treat these source changes as release-ready until the newest HEAD passes both platforms.
