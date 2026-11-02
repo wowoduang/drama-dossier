@@ -73,7 +73,7 @@ def trajectory(connection, series_id, character_id, as_of, at_sec=None, dimensio
         errors = validate(data)
         if errors: raise ValueError(f'{ep} 状态档案校验失败: ' + '; '.join(errors))
         payloads[ep] = data
-        graph_issues = state_graph_issues(data, character_id=local)
+        graph_issues = state_graph_issues(data, character_id=local, at_sec=at_sec if ep == cutoff_ep else None)
         for issue in graph_issues:
             conflicts.append({'episode_id': ep, **issue})
         bound = at_sec if at_sec is not None and ep == cutoff_ep else float('inf')
