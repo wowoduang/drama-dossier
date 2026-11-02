@@ -95,6 +95,16 @@ def main():
                 raise RuntimeError(f"FFmpeg 渲染失败（退出码 {exc.returncode}）：\\n{detail}") from exc
         finally:Path(fp).unlink(missing_ok=True)
         print(f'跨集成片渲染完成: {out}')
-    except Exception as e:raise SystemExit(f'渲染失败: {e}')
+    except Exception as e:
+        message=f'渲染失败: {e}'
+        try:
+            sys.stderr.write(message+'\\n')
+        except UnicodeEncodeError:
+            stream=getattr(sys.stderr,'buffer',None)
+            if stream is not None:
+                stream.write((message+'\\n').encode(sys.stderr.encoding or 'utf-8',errors='backslashreplace'))
+            else:
+                sys.stderr.write(message.encode('ascii',errors='backslashreplace').decode('ascii')+'\\n')
+        raise SystemExit(1)
 if __name__=='__main__':main()
 
