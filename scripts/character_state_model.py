@@ -113,10 +113,11 @@ def validation_errors(data):
 
 
 
-def state_graph_issues(data):
-    """Return conservative lifecycle/transition diagnostics; do not infer persistence."""
-    states = [s for s in data.get('character_states', []) if isinstance(s, dict)]
-    changes = [c for c in data.get('character_state_changes', []) if isinstance(c, dict)]
+def state_graph_issues(data, character_id=None):
+    """Return conservative lifecycle/transition diagnostics; optionally scope to one local character."""
+    states = [s for s in data.get('character_states', []) if isinstance(s, dict) and (character_id is None or s.get('character_id') == character_id)]
+    state_ids = {s.get('state_id') for s in states}
+    changes = [c for c in data.get('character_state_changes', []) if isinstance(c, dict) and (character_id is None or (c.get('character_id') == character_id and c.get('from_state_id') in state_ids and c.get('to_state_id') in state_ids))]
     issues = []
     groups = {}
     for state in states:
@@ -139,10 +140,10 @@ def state_graph_issues(data):
         incoming.setdefault(b, []).append(change.get('change_id'))
     for state_id, ids in outgoing.items():
         if len(ids) > 1:
-            issues.append({'code':'STATE_TRANSITION_FORK','state_id':state_id,'change_ids':ids,'severity':'WARN','message':'同一状态存在多个后继变化；需人工确认是否为分支叙事或重复建模'})
+            issues.append({'code':'STATE_TRANSITION_FORK','state_id':state_id,'state_ids':[state_id],'change_ids':ids,'severity':'WARN','message':'同一状态存在多个后继变化；需人工确认是否为分支叙事或重复建模'})
     for state_id, ids in incoming.items():
         if len(ids) > 1:
-            issues.append({'code':'STATE_TRANSITION_MERGE','state_id':state_id,'change_ids':ids,'severity':'WARN','message':'多个变化汇入同一状态；需人工确认是否为重复或合流'})
+            issues.append({'code':'STATE_TRANSITION_MERGE','state_id':state_id,'state_ids':[state_id],'change_ids':ids,'severity':'WARN','message':'多个变化汇入同一状态；需人工确认是否为重复或合流'})
     return issues
 
 def context_snapshot(data, obj, collection):
