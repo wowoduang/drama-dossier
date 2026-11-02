@@ -129,3 +129,12 @@
 - Add diagnostics for overlapping conflicting state validity intervals and transition graph forks/merges.
 - Add a user-defined character-arc milestone coverage checker; no automatic claim of semantic growth.
 - Added regression coverage for event timing and state graph diagnostics. Full repository validation remains pending.
+
+
+## v4.3.1 WorkBuddy regression fixes (in progress)
+
+- B1: state graph fork/merge diagnostics now expose a consistent `state_ids` field expected by the state-cut compiler.
+- B2: correct the regression fixture to distinguish a timestamp strictly before the source state from the inclusive source-state endpoint; preserve closed-interval semantics.
+- B3: scope state-graph diagnostics to the requested local character in trajectory queries.
+- B4: close the FFmpeg filter-script temporary file before launching the subprocess on Windows, clean it up in `finally`, and preserve stderr in a CLI-friendly error.
+- Added regression tests for B1/B2/B3. B4 still requires Windows execution in the reported environment. B5-B10 are not changed until their full report evidence is available.
