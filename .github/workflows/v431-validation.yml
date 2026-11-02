@@ -2,7 +2,6 @@ name: v4.3.1 validation
 
 permissions:
   contents: write
-  actions: write
 
 on:
   pull_request:
@@ -43,8 +42,6 @@ jobs:
         run: python scripts/build_release.py
       - name: Commit refreshed package and dispatch validation of new HEAD
         if: matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           if ! git diff --quiet -- skill.zip; then
             git config user.name "github-actions[bot]"
@@ -52,10 +49,9 @@ jobs:
             git add skill.zip
             git commit -m "build(v4.3.1): refresh skill package"
             git push origin HEAD:refs/heads/fix/v4.3.1-state-logic
-            gh workflow run v431-validation.yml --ref fix/v4.3.1-state-logic
           fi
       - name: Verify committed package matches source
-        if: github.event_name == 'workflow_dispatch' && matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest'
         run: git diff --exit-code -- skill.zip
       - name: Windows default-encoding regression
         if: runner.os == 'Windows'
