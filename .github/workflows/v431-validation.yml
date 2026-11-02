@@ -53,12 +53,12 @@ jobs:
       - name: Verify committed package matches source
         if: matrix.os == 'ubuntu-latest'
         run: git diff --exit-code -- skill.zip
-      - name: Windows default-encoding regression
+      - name: Windows default-encoding regression (tests and release build)
         if: runner.os == 'Windows'
         shell: pwsh
         env:
           PYTHONUTF8: "0"
-        run: python -m unittest discover -s tests -v
+        run: python scripts/build_release.py
       - name: Upload validated skill package
         uses: actions/upload-artifact@v4
         with:
