@@ -112,3 +112,11 @@
 - All candidates remain UNREVIEWED; no face recognition or unsupported identity inference.
 - 104 regression tests pass.
 
+
+
+## v4.3.1 (patch candidate)
+
+- Tighten state-change validation: each linked context event must occur within the inclusive interval between the source and destination state timestamps.
+- Add regression tests for events before, after, and exactly at the transition endpoint.
+- No dossier schema or SQLite migration; existing records remain readable, but invalid transition links must be corrected and re-reviewed.
+- Full repository test/build validation is pending; this patch is published on a dedicated branch for review, not merged to main.
