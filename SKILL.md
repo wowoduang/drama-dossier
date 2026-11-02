@@ -451,3 +451,8 @@ v4.3.1 状态记录只允许 `references/character-state.schema.json` 定义的�
 
 
 v4.3.1 验证记录：GitHub Actions 的 Ubuntu 与 Windows 构建均通过，每个平台 175 项测试通过；Python 语法与 12 个 Web JavaScript 块/文件检查通过；完整构建生成并校验 100 文件 `skill.zip`。渲染器使用 FFmpeg 7.1+ 的 `-/filter_complex` 文件输入语法，兼容 FFmpeg 8.1 基线及 FFmpeg 9。
+
+
+### JSON Schema 适用范围
+
+`references/character-state.schema.json` 只适用于人物状态候选导入载荷（顶层 `episode_id`、`character_states`、`character_state_changes`），不适用于完整 episode dossier。对应示例是 `examples/character-state-candidates.example.json`。`examples/character-state-base.example.json` 是完整 dossier 示例，应使用 `scripts/dossier_v3.py` 的 Python 业务校验；跨记录引用、审核快照和时间约束也由 Python 校验器负责。
