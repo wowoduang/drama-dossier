@@ -202,7 +202,7 @@ class StateSeriesTests(unittest.TestCase):
         b3={**d['character_states'][1],'state_id':'B3','character_id':'B','value':'寻找同伴','playback_time':41,'audience_available_sec':42}
         d['character_states'].extend([b1,b2,b3])
         cb1={**d['character_state_changes'][0],'change_id':'BC1','character_id':'B','from_state_id':'B1','to_state_id':'B2'}
-        cb2={**cb1,'change_id':'BC2','to_state_id':'B3','playback_time':42,'audience_available_sec':43}
+        cb2={**cb1,'change_id':'BC2','to_state_id':'B3','playback_time':41,'audience_available_sec':42}
         d['character_state_changes'].extend([cb1,cb2])
         d['review_history']=[]
         for collection,field in [('character_states','state_id'),('character_state_changes','change_id')]:
