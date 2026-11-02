@@ -456,3 +456,11 @@ v4.3.1 验证记录：GitHub Actions 的 Ubuntu 与 Windows 构建均通过，�
 ### JSON Schema 适用范围
 
 `references/character-state.schema.json` 只适用于人物状态候选导入载荷（顶层 `episode_id`、`character_states`、`character_state_changes`），不适用于完整 episode dossier。对应示例是 `examples/character-state-candidates.example.json`。`examples/character-state-base.example.json` 是完整 dossier 示例，应使用 `scripts/dossier_v3.py` 的 Python 业务校验；跨记录引用、审核快照和时间约束也由 Python 校验器负责。
+
+
+### v4.3.1 审计后补充规则
+
+- 状态图冲突若涉及未审核草稿，仍作为诊断展示，但不阻断独立通过审核的状态变化素材；全部相关状态和变化均已审核时，冲突才阻断编译。
+- 可见性声明保持单调：较晚集数的重复声明写入审计，但不覆盖更早的有效声明。若要把生效集数改早，必须显式使用 `series_visibility.py ... --correct`，并留下审计记录。
+- 测试文本读写和子进程捕获输出显式使用 UTF-8，不依赖 Windows 默认区域编码。
+- 发布工作流会从当前源码刷新已提交的 `skill.zip`，再触发新 HEAD 的验证；Windows CI 另行关闭 Python UTF-8 模式运行测试。
