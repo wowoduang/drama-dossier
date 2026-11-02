@@ -67,9 +67,9 @@ def declare_visible(db,sid,entity_type,entity_id,episode_id,evidence_refs,reason
             previous=dict(before)
             previous_number=int(before["effective_episode_number"])
             requested_number=int(ep[0])
-            if requested_number>previous_number:
-                # Visibility is monotonic: later supporting evidence must not
-                # revoke an already established earlier audience-knowledge point.
+            if requested_number>previous_number and not correct:
+                # Later supporting evidence cannot silently revoke an earlier
+                # audience-knowledge point. A reviewed correction can do so.
                 action="DECLARE_VISIBLE_LATER_IGNORED"
                 after={"requested":requested,"effective_retained":{"effective_episode_id":before["effective_episode_id"],"effective_episode_number":previous_number,"evidence_refs":json.loads(before["evidence_refs_json"])}}
                 aid="VISAUD_"+uuid.uuid4().hex[:12]
@@ -84,8 +84,8 @@ def declare_visible(db,sid,entity_type,entity_id,episode_id,evidence_refs,reason
                 c.commit()
                 return {"entity_type":entity_type,"entity_id":entity_id,"effective_episode_id":before["effective_episode_id"],"effective_episode_number":previous_number,"evidence_refs":json.loads(before["evidence_refs_json"]),"review_status":before["review_status"],"declaration_recorded":True,"effective_retained":True}
             if not correct:
-                raise ValueError("新声明将把已知集数提前；如确属纠正，必须显式使用 --correct 并记录审计")
-            action="CORRECT_VISIBLE_EARLIER"
+                raise ValueError("新声明将改变已审核的可见性生效集数；如确属纠正，必须显式使用 --correct 并记录审计")
+            action="CORRECT_VISIBLE_EARLIER" if requested_number<previous_number else "CORRECT_VISIBLE_LATER"
         elif before:
             # Episode replacement or evidence invalidation reopens the declaration.
             # A fresh valid declaration at the same/later point may restore it.
@@ -103,7 +103,7 @@ def declare_visible(db,sid,entity_type,entity_id,episode_id,evidence_refs,reason
 
 def main():
     p=argparse.ArgumentParser(description="声明跨集身份/关系/伏笔/因果在何集已对观众可知")
-    p.add_argument("db");p.add_argument("--series-id",required=True);p.add_argument("--entity-type",required=True,choices=["character","storyline","thread","causal_edge"]);p.add_argument("--entity-id",required=True);p.add_argument("--known-by-episode",required=True);p.add_argument("--evidence-ref",action="append",required=True);p.add_argument("--reason",required=True);p.add_argument("--reviewer",default="");p.add_argument("--correct",action="store_true",help="显式确认将可见性生效集数提前，并记录审计")
+    p.add_argument("db");p.add_argument("--series-id",required=True);p.add_argument("--entity-type",required=True,choices=["character","storyline","thread","causal_edge"]);p.add_argument("--entity-id",required=True);p.add_argument("--known-by-episode",required=True);p.add_argument("--evidence-ref",action="append",required=True);p.add_argument("--reason",required=True);p.add_argument("--reviewer",default="");p.add_argument("--correct",action="store_true",help="显式确认修改可见性生效集数（提前或延后），并记录审计")
     a=p.parse_args()
     try:print(json.dumps(declare_visible(a.db,a.series_id,a.entity_type,a.entity_id,a.known_by_episode,a.evidence_ref,a.reason,a.reviewer,a.correct),ensure_ascii=False,indent=2))
     except Exception as e:print(f"错误: {e}",file=sys.stderr);raise SystemExit(2)
