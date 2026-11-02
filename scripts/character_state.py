@@ -18,7 +18,7 @@ from series_search import resolve_cutoff
 from story_arc_compiler import _visible_by
 from series_compiler import load_sources
 
-VERSION = '4.3.0'
+VERSION = '4.3.1'
 
 
 def import_candidates(dossier, payload):
