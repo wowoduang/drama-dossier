@@ -442,6 +442,9 @@ For every `character_state_changes` record, each referenced context event must h
 ## v4.3.1 人物状态逻辑加固
 
 - 状态变化引用的每个上下文事件必须位于 `from_state.playback_time <= event.playback_time <= to_state.playback_time` 的闭区间内；这只是时间上下文，不证明因果。
-- 关系状态轨迹同时输出 `local_target_character_id` 与审核映射唯一时的 `global_target_character_id`。未映射/多重映射分别标记 `UNRESOLVED` / `AMBIGUOUS`，不得猜测。
+- 关系状态轨迹同时输出 `local_target_character_id` 与审核映射唯一时的 `global_target_character_id`。当前数据库对每个分集人物只允许一条全局映射，因此未审核映射标记 `UNRESOLVED`；不提供不可达的 `AMBIGUOUS` 状态。
 - `state_graph_issues()` 诊断状态有效期重叠、变化分叉和合流；警告需要人工判断，不把时点状态推断成持续心理。
-- 用 `scripts/character_arc_integrity.py PROJECT ARC_PLAN OUTPUT` 核对用户指定的成长里程碑是否有状态、变化和事件素材覆盖。该工具只验证清单覆盖，不自动评价人物是否真正成长。
+- 用 `scripts/character_arc_integrity.py PROJECT ARC_PLAN OUTPUT` 核对用户指定的成长里程碑是否有状态、变化和事件素材覆盖。仅 `enabled` 不为 `false` 的片段计入覆盖；未知计划字段会报错。该工具只验证清单覆盖，不自动评价人物是否真正成长。
+
+
+v4.3.1 状态记录只允许 `references/character-state.schema.json` 定义的字段；未知字段会被 Python 校验拒绝，防止字段拼写错误静默通过。
