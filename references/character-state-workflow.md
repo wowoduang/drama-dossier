@@ -137,3 +137,10 @@ python scripts/character_arc_integrity.py work/state-cut.json work/arc-plan.json
 ```
 
 该检查只核对指定里程碑及其事件素材是否进入剪辑工程，不替代人工判断成长意义、因果和叙事质量。
+
+
+## v4.3.1 渲染兼容与验证
+
+渲染器使用 FFmpeg 7.1+ 文件输入形式 `-/filter_complex FILTER_FILE`，避免 FFmpeg 9 移除旧的 `-filter_complex_script` 参数。当前基线 FFmpeg 8.1 与 FFmpeg 9 均已在 Windows/Ubuntu CI 构建中验证。
+
+v4.3.1 修复分支的完整构建结果：Windows 175 项测试通过，Ubuntu 175 项测试通过；Python 语法、12 个 Web JavaScript 块/文件及 100 文件 ZIP 完整性均通过。
