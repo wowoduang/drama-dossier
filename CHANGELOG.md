@@ -1,5 +1,11 @@
 # Changelog
 
+## v4.3.2
+
+- 修复剪辑边界建议始终不移动的问题，保留事件、已有字幕和人物状态证据，发现已有截断时标记人工复核。
+- 修复旧版 FFmpeg 不支持新滤镜文件参数导致渲染失败的问题。
+
+
 ## v4.3.0
 
 - 新增可选人物状态及显式状态变化模型，覆盖目标、认知、处境、关系、外显反应和行动结果；沿用 dossier schema 3.5 与 SQLite 原有完整 JSON 投影，无需新建状态数据库。
@@ -164,3 +170,4 @@
 - N4: PR validation rebuilds and commits the generated `skill.zip`; the canonical Ubuntu PR job checks package/source consistency.
 - N5: schema scope is explicitly documented as candidate payload only; complete dossiers use the Python dossier validator.
 - CI run 41488884867 passed on the current PR HEAD: 179 tests on Ubuntu and Windows, plus a second full Windows release build with `PYTHONUTF8=0`; Python syntax, 12 Web JavaScript blocks/files and 100-file ZIP integrity checks passed.
+

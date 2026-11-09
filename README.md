@@ -437,3 +437,7 @@ The dedicated patch branch is validated by GitHub Actions on Ubuntu and Windows:
 - Repeated visibility declarations are monotonic: a later episode declaration is audited but does not replace an earlier effective episode. Changing an already approved visibility episode earlier or later requires the explicit `--correct` option and an audit entry.
 - Tests use explicit UTF-8 for file IO and captured subprocess text instead of relying on Windows locale defaults.
 - The pull-request validation workflow rebuilds and commits `skill.zip` from current source; the canonical Ubuntu PR job verifies package/source consistency. Windows CI also runs the full release build with Python UTF-8 mode disabled.
+
+
+
+边界建议修复：在已有片段范围内围绕事件和设置的前后时长提出建议；原窗口中的字幕和状态证据被保留，已有截断会标记人工核查。此建议不能保证识别未提供的对白。

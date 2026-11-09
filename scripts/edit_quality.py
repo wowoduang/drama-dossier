@@ -48,24 +48,39 @@ def suggest_boundaries(project:dict[str,Any], cue_payloads:dict[str,dict[str,Any
                 if e is not None: subtitle_ends.append(e)
             if "silence" in typ or "low_energy" in typ: silence.append(t)
         event_t=float(clip.get("event_time_sec", clip.get("anchor_time_sec", (start+end)/2)))
-        desired_in=max(0.0, min(start, event_t-pre_roll))
-        desired_out=max(end, event_t+post_roll)
-        # Snap in-point backward to nearby shot boundary; avoid snapping into dialogue.
-        in_shot=_near(desired_in,shot,snap_window)
-        out_shot=_near(desired_out,shot,snap_window)
-        in_sub=_near(desired_in,subtitle_starts,snap_window)
-        out_sub=_near(desired_out,subtitle_ends,snap_window)
-        proposed_in=in_shot if in_shot is not None and in_shot<=desired_in else desired_in
-        proposed_out=out_shot if out_shot is not None and out_shot>=desired_out else desired_out
-        if in_sub is not None and in_sub<proposed_in: proposed_in=in_sub
-        if out_sub is not None and out_sub>proposed_out: proposed_out=out_sub
-        # Never expand outside the original clip unless caller explicitly opts in later.
-        proposed_in=max(start,proposed_in); proposed_out=min(end,proposed_out)
+        if not all(math.isfinite(v) for v in (start,end,event_t,pre_roll,post_roll,snap_window)) or start < 0 or end <= start or not start <= event_t <= end or min(pre_roll,post_roll,snap_window)<0:
+            raise ValueError("无效片段时间、事件锚点或边界参数")
+        # Preserve every observed subtitle that intersects the original window,
+        # plus the explicitly protected state evidence. Never expand the window.
+        spans=[]
+        for cue in cues.get("cues", cues.get("media_cues", [])):
+            typ=str(cue.get("type",cue.get("cue_type",""))).lower()
+            if not any(k in typ for k in ("subtitle","transcript","asr")): continue
+            a=_cue_time(cue,"time_sec","start_sec","playback_time"); b=_cue_time(cue,"end_sec")
+            if a is not None and b is not None and math.isfinite(a) and math.isfinite(b) and b>a and a<end and b>start: spans.append((a,b))
+        for ev in clip.get("state_evidence_ranges",[]):
+            a=ev.get("start_sec"); b=ev.get("end_sec")
+            if not all(type(v) in (int,float) and math.isfinite(v) for v in (a,b)) or a<start or b>end or b<a:
+                raise ValueError("状态证据时间范围无效或超出原片段")
+            spans.append((a,b))
+        left_limit=min([event_t]+[max(start,a) for a,b in spans])
+        right_limit=max([event_t]+[min(end,b) for a,b in spans])
+        desired_in=max(start,min(left_limit,event_t-pre_roll))
+        desired_out=min(end,max(right_limit,event_t+post_roll))
+        def safe_in(x): return start<=x<=left_limit and not any(a<x<b for a,b in spans)
+        def safe_out(x): return right_limit<=x<=end and not any(a<x<b for a,b in spans)
+        def choose(desired, original, safe):
+            options=[desired]+[x for x in shot if math.isfinite(x) and abs(x-desired)<=snap_window]
+            valid=[x for x in options if safe(x)]
+            return min(valid,key=lambda x:abs(x-desired)) if valid else original
+        proposed_in=choose(desired_in,start,safe_in)
+        proposed_out=choose(desired_out,end,safe_out)
         flags=[]
         if not shot: flags.append("NO_SHOT_BOUNDARY_CUES")
         if not subtitle_starts: flags.append("NO_SUBTITLE_CUES")
-        if not any(proposed_in <= x <= event_t for x in subtitle_starts): flags.append("CHECK_DIALOGUE_LEAD_IN")
-        if not any(event_t <= x <= proposed_out for x in subtitle_ends): flags.append("CHECK_DIALOGUE_TAIL")
+        if any(a<proposed_in<b for a,b in spans): flags.append("CUTS_DIALOGUE_OR_EVIDENCE_IN")
+        if any(a<proposed_out<b for a,b in spans): flags.append("CUTS_DIALOGUE_OR_EVIDENCE_OUT")
+        if any(flag.startswith("CUTS_") for flag in flags): flags.append("BOUNDARY_PINNED_REVIEW")
         if proposed_out-proposed_in < 0.8: flags.append("VERY_SHORT_CLIP")
         suggestion={
             "clip_id":clip.get("clip_id"),"episode_id":ep,
@@ -126,4 +141,5 @@ def main():
     else: result=continuity_qc(read_json(x.project))
     write_json(x.output,result); print(json.dumps({"output":x.output,"issue_count":result.get("issue_count",len(result.get("boundary_suggestions",[]))),"release_ready":result.get("release_ready")},ensure_ascii=False))
 if __name__=="__main__": main()
+
 
