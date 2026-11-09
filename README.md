@@ -441,3 +441,6 @@ The dedicated patch branch is validated by GitHub Actions on Ubuntu and Windows:
 
 
 边界建议修复：在已有片段范围内围绕事件和设置的前后时长提出建议；原窗口中的字幕和状态证据被保留，已有截断会标记人工核查。此建议不能保证识别未提供的对白。
+
+
+影片理解支持材料审核或跳过、分段 AI 结果导入、反复反馈和整片报告审核。当前通过文件手动与 AI 交换，不自动上传原片或调用模型。详见 [film-understanding-workflow.md](references/film-understanding-workflow.md)。
