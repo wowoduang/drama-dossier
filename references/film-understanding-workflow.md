@@ -36,3 +36,14 @@ python scripts/film_understanding.py aggregate work/understanding work/film-resu
 ```
 
 汇编输出保留缺失段落和当前满意状态，满意只是用户对报告的评价，不会把剧情事实自动标为 PASS。状态及报告均需人工审查；没有经过真实影片端到端验证。分集档案仍由现有 `import_ai_review.py` 等流程导入与审核，本功能不修改事实库。输出文件与轮次均禁止覆盖；扫描文件更改会要求建立新会话。工具不会自动截取或上传原片，也不能保证 AI 对每帧的覆盖。
+
+
+## 本地分段材料包与过期提示
+
+```bash
+python scripts/film_understanding.py prepare work/understanding S0001 work/package-1 --include-video
+```
+
+该命令在新文件夹生成提示、对应关键帧、时间映射清单和本地分段 MP4；不上传文件。视频片段的时间须加上 manifest 中的 `video_start_offset_sec` 才是原片时间。扫描数据附带原片 SHA-256 时会验证；未附带时清单会标注未验证，用户需确认片源版本。字幕源仍需按提示另行提供；未找到的关键帧列入 missing_frames。省略 `--include-video` 只打包提示和已有关键帧。
+
+综合提示生成时记录各段结果版本。任何分段结果在此后发生变化，整片报告会标记 `film_report_stale`，之前的满意状态不再有效；需重新生成综合提示并请 AI 更新整片报告。已有旧报告不会被覆盖。

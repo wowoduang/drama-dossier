@@ -444,3 +444,5 @@ The dedicated patch branch is validated by GitHub Actions on Ubuntu and Windows:
 
 
 影片理解支持材料审核或跳过、分段 AI 结果导入、反复反馈和整片报告审核。当前通过文件手动与 AI 交换，不自动上传原片或调用模型。详见 [film-understanding-workflow.md](references/film-understanding-workflow.md)。
+
+影片理解可用 `film_understanding.py prepare` 在本地生成分段视频、关键帧及时间映射；整片报告引用的分段结果发生变化时会标记过期。
