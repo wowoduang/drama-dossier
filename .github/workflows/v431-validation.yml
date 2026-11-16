@@ -1,7 +1,7 @@
 name: v4.3.1 validation
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: v431-${{ github.event.pull_request.head.ref || github.ref_name }}
@@ -17,17 +17,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.10', '3.12']
     runs-on: ${{ matrix.os }}
     env:
       PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: fix/v4.3.1-state-logic
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python }}
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -40,23 +39,21 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: choco install ffmpeg --yes --no-progress
+      - name: Install FFmpeg (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
       - name: Build and run full validation
         run: python scripts/build_release.py
-      - name: Commit refreshed package
-        if: matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request'
-        run: |
-          if ! git diff --quiet -- skill.zip; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add skill.zip
-            git commit -m "build(v4.3.1): refresh skill package"
-            git push origin HEAD:refs/heads/fix/v4.3.1-state-logic
-          fi
       - name: Verify committed package matches source
-        if: matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request'
         run: git diff --exit-code -- skill.zip
+      - name: Browser UI interaction smoke tests
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install chromium
+          node .github/scripts/browser_ui_smoke.cjs
       - name: Windows default-encoding regression (tests and release build)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.python == '3.12'
         shell: pwsh
         env:
           PYTHONUTF8: "0"
@@ -64,6 +61,6 @@ jobs:
       - name: Upload validated skill package
         uses: actions/upload-artifact@v4
         with:
-          name: drama-dossier-skill-${{ matrix.os }}
+          name: drama-dossier-skill-${{ matrix.os }}-py${{ matrix.python }}
           path: skill.zip
           if-no-files-found: error
